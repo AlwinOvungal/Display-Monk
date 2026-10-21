@@ -8,6 +8,8 @@
 	<string>Display Monk</string>
 	<key>CFBundleExecutable</key>
 	<string>DisplayMonk</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>app.displaymonk.DisplayMonk</string>
 	<key>CFBundleInfoDictionaryVersion</key>

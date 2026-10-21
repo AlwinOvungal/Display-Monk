@@ -9,8 +9,10 @@ struct DisplayMonkApp: App {
     @StateObject private var store = DisplayStore.shared
 
     var body: some Scene {
-        MenuBarExtra("Display Monk", systemImage: "sun.max") {
+        MenuBarExtra {
             MenuView(store: store)
+        } label: {
+            Image(nsImage: MenuBarIcon.image)
         }
         .menuBarExtraStyle(.window)
     }

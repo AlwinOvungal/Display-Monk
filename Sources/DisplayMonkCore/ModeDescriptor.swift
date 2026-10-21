@@ -71,6 +71,14 @@ public enum ModeList {
             .filter { seen.insert($0.dedupeKey).inserted }
     }
 
+    /// The HiDPI mode closest in width to `size`, for when the exact size isn't offered.
+    /// Among equally close sizes, the refresh rate nearest the current one wins.
+    public static func closestHiDPI(to size: LogicalSize, in modes: [ModeDescriptor], current: ModeDescriptor?) -> ModeDescriptor? {
+        let hiDPI = organize(modes).filter(\.isHiDPI)
+        guard let best = hiDPI.min(by: { abs($0.width - size.width) < abs($1.width - size.width) }) else { return nil }
+        return bestMatch(for: ModeSpec(width: best.width, height: best.height, hiDPI: true), in: modes, current: current)
+    }
+
     /// Picks the mode that best matches a request; nil if no mode has the requested size.
     public static func bestMatch(for spec: ModeSpec, in modes: [ModeDescriptor], current: ModeDescriptor?) -> ModeDescriptor? {
         let candidates = organize(modes).filter { $0.width == spec.width && $0.height == spec.height }

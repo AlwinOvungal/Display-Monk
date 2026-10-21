@@ -12,7 +12,8 @@ Requires macOS 13 Ventura or later. Works on both Apple Silicon and Intel Macs.
 |---|---|---|
 | Brightness: native (Apple displays), DDC (external monitors) or software (gamma) | ✓ | ✓ (native, DDC) |
 | Combined brightness: backlight first, then software dimming down to black | ✓ | |
-| High Resolution (HiDPI) for external displays, with a resolution slider | ✓ | ✓ (`hidpi`) |
+| High Resolution (HiDPI) for external displays, instantly, with a resolution dropdown | ✓ | ✓ (`hidpi`) |
+| Display arrangement (left/right/above/below, alignment) and main display | ✓ | |
 | Contrast, speaker volume and mute over DDC | ✓ | ✓ |
 | Input switching (HDMI, DisplayPort, USB-C, …) | ✓ | ✓ |
 | Raw read/write of any VCP code | | ✓ |
@@ -79,26 +80,44 @@ tables when it exits), so it is only offered in the app.
 
 ## HiDPI on external displays
 
-Apple Silicon Macs don't offer sharp HiDPI ("Retina") sizes for most sub-4K monitors, such as
-2048×1152 on a 2560×1440 panel. Turn on **High Resolution (HiDPI)** for a display in the menu,
-then pick a size with the **Resolution** slider. There are two ways:
+Apple Silicon Macs don't offer sharp HiDPI ("Retina") sizes for most sub-4K monitors. Turn on
+**High Resolution (HiDPI)** for a display and it takes effect **immediately**, with no password
+and no restart. Then pick a size from the **Resolution** dropdown.
 
-- **Install (recommended).** Adds HiDPI sizes to macOS's own configuration for that display
-  model, in `/Library/Displays/Contents/Resources/Overrides/`. It needs your administrator
-  password and a restart, then works even when Display Monk isn't running. If another app
-  (for example BetterDisplay) already configured the display, its settings are kept and a
-  backup is restored when you turn HiDPI off.
-- **Virtual screen.** Works immediately and on every Mac, including M4/M5 models that ignore the
-  configuration for some sizes. A HiDPI virtual screen renders the desktop and your display
-  mirrors it. It only lasts while Display Monk is running.
+HiDPI starts at **1600 × 900** on 2K (2560×1440) and other 16:9 monitors up to 3200 pixels wide.
+On 4K monitors, where 1600 × 900 would be blurry, it starts at the size matching Apple's own
+displays (about 110 points per inch, e.g. 2560 × 1440 on a 27" 4K). Your last choice is
+remembered and takes precedence.
+
+How it works:
+
+- **Right away:** a HiDPI virtual screen renders the desktop and your display mirrors it. This
+  works on every Mac, including M4/M5, but only while Display Monk is running.
+- **Optionally permanent:** the **…** menu next to the switch has **Make HiDPI Permanent…**. It
+  adds the HiDPI sizes to macOS's own configuration for that display model (in
+  `/Library/Displays/Contents/Resources/Overrides/`) and needs your administrator password. You
+  never have to restart for it: after your next normal restart, Display Monk switches from the
+  virtual screen to native HiDPI when it starts, and from then on HiDPI works without the app.
+  If another app (for example BetterDisplay) already configured the display, its settings are
+  kept and a backup is restored when you remove permanent HiDPI.
 
 Both only change how the desktop is rendered and scaled. The monitor keeps getting its normal
-native signal and refresh rate, and no EDID is overridden. HiDPI renders twice the pixels, so
-it uses somewhat more graphics power (as Apple's own Retina modes do).
+native signal and refresh rate, and no EDID is overridden. The display is never switched off or
+reconnected. HiDPI renders twice the pixels, so it uses somewhat more graphics power (as Apple's
+own Retina modes do).
 
-To undo it, turn the switch off or run `sudo displaymonk hidpi disable`, then restart. If you
-ever need to recover by hand, delete the display's file under
+To undo it, turn the switch off. To remove the permanent configuration, use **…** → **Remove
+Permanent HiDPI…** (or `sudo displaymonk hidpi disable`); its sizes disappear after the next
+restart. If you ever need to recover by hand, delete the display's file under
 `/Library/Displays/Contents/Resources/Overrides/` and restart.
+
+## Arranging displays
+
+With more than one display connected, each external display has a **Position** dropdown
+(Left of / Right of / Above / Below the MacBook) and an **Align** dropdown (Top / Center / Bottom,
+or Left / Center / Right). **Set as Main** moves the menu bar and Dock to that display. Only the
+desktop layout changes. Positions dragged in System Settings that don't match a preset show
+as "Custom position".
 
 ## Brightness down to black
 
@@ -123,6 +142,11 @@ Display Monk quits. Turn Combined off in the display's brightness menu (Native/D
 
 - **Accessibility** is needed only if you turn on the brightness or volume key options. macOS
   will ask when you enable them (System Settings → Privacy & Security → Accessibility).
+- **After updating Display Monk**, macOS silently stops trusting the new copy even though the
+  Accessibility switch still looks on. The menu shows a warning when this happens. Select
+  Display Monk in the Accessibility list, remove it with **–**, then add it again with **+**.
+- Brightness keys work for the external display under the pointer. Over the MacBook's own
+  screen they keep controlling it as usual.
 - The app is not sandboxed: DDC needs direct IOKit access.
 
 ## How it works
@@ -150,7 +174,13 @@ Sources/DisplayKit        macOS display access: DDC transports, brightness, mode
 Sources/DisplayMonkApp    SwiftUI menu bar app
 Sources/displaymonk       CLI (swift-argument-parser)
 Tests/DisplayMonkCoreTests
+Resources                 Info.plist, AppIcon.svg/.icns, MenuBarIcon.svg
+scripts                   bundle.sh (builds the .app), make-icons.py (regenerates AppIcon.icns)
 ```
+
+The menu bar icon is drawn in code from the paths in `Resources/MenuBarIcon.svg`
+(`Sources/DisplayMonkApp/MenuBarIcon.swift`). After editing `Resources/AppIcon.svg`, run
+`pip install cairosvg pillow && python3 scripts/make-icons.py` to rebuild `AppIcon.icns`.
 
 ## Testing on real hardware
 
@@ -167,9 +197,14 @@ Unit tests cover everything that doesn't need a display. With a monitor attached
 6. Unplug and replug a monitor: the menu updates and DDC still works.
 7. Drag brightness to 0 on an external monitor: the backlight reaches its minimum, then the
    image fades to black. Quit the app and it comes back.
-8. Turn on HiDPI → Install, restart, and check the Resolution slider offers HiDPI sizes such as
-   2048 × 1152. If not, use HiDPI → Use Virtual Screen.
-9. Leave the menu closed for a minute: Activity Monitor shows about 0% CPU for Display Monk.
+8. Turn on HiDPI: it applies instantly at 2560 × 1440 HiDPI on a 27" QHD monitor, and the
+   Resolution dropdown lists the other HiDPI sizes. Optionally make it permanent; after a
+   restart the same size comes back natively.
+9. With the brightness key option on and the pointer on the external display, the brightness
+   keys change it and show the popup.
+10. Position the external display Left of the MacBook with Bottom alignment and check the mouse
+    crosses over there; Set as Main moves the menu bar.
+11. Leave the menu closed for a minute: Activity Monitor shows about 0% CPU for Display Monk.
 
 ## Acknowledgements
 

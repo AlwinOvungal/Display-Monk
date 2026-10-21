@@ -51,7 +51,28 @@ final class HiDPIOverrideTests: XCTestCase {
         XCTAssertTrue(sizes.contains(LogicalSize(width: 1920, height: 1080)))
         XCTAssertEqual(sizes.count, 21)
         XCTAssertTrue(sizes.allSatisfy { $0.height % 2 == 0 })
-        XCTAssertEqual(HiDPIOverride.defaultSize(in: sizes, nativeWidth: 2560), LogicalSize(width: 2048, height: 1152))
+    }
+
+    func testDefaultSizeIs1600x900WhereAvailable() {
+        let qhd = LogicalSize(width: 2560, height: 1440)
+        let sizes = HiDPIOverride.presetSizes(nativeWidth: qhd.width, nativeHeight: qhd.height)
+        XCTAssertEqual(HiDPIOverride.defaultSize(in: sizes, native: qhd, physicalWidthMM: 597), LogicalSize(width: 1600, height: 900))
+        XCTAssertEqual(HiDPIOverride.defaultSize(in: sizes, native: qhd, physicalWidthMM: nil), LogicalSize(width: 1600, height: 900))
+    }
+
+    func testDefaultSizeMatchesAppleDensityElsewhere() {
+        func defaultSize(native: LogicalSize, widthMM: Double?) -> LogicalSize? {
+            let sizes = HiDPIOverride.presetSizes(nativeWidth: native.width, nativeHeight: native.height)
+            return HiDPIOverride.defaultSize(in: sizes, native: native, physicalWidthMM: widthMM)
+        }
+        let qhd = LogicalSize(width: 2560, height: 1440)
+        let uhd = LogicalSize(width: 3840, height: 2160)
+        XCTAssertEqual(defaultSize(native: uhd, widthMM: 597), qhd) // 27" 4K
+        XCTAssertEqual(defaultSize(native: uhd, widthMM: 527), LogicalSize(width: 2304, height: 1296)) // 24" 4K
+        XCTAssertEqual(defaultSize(native: uhd, widthMM: 708), LogicalSize(width: 3072, height: 1728)) // 32" 4K
+        XCTAssertEqual(defaultSize(native: uhd, widthMM: nil), uhd)
+        let ultrawide = LogicalSize(width: 3440, height: 1440)
+        XCTAssertEqual(defaultSize(native: ultrawide, widthMM: 800), LogicalSize(width: 3440, height: 1440)) // 34" ultrawide
     }
 
     func testPresetsRespectFramebufferLimit() {

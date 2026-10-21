@@ -12,7 +12,7 @@ public enum OverrideStatus: Equatable, Sendable {
 }
 
 /// Installs and removes the display override that adds HiDPI modes. macOS reads it at boot, so
-/// changes take effect after a restart. Only scaled desktop sizes are added; the monitor's
+/// changes take effect at the next restart (the app uses a virtual screen until then). Only scaled desktop sizes are added; the monitor's
 /// timing, refresh rate and EDID are left alone.
 public enum OverrideInstaller {
     static let markerKey = "DisplayMonkManaged"
@@ -38,6 +38,14 @@ public enum OverrideInstaller {
     public static func presetSizes(for display: Display) -> [LogicalSize] {
         guard let native = nativeSize(for: display) else { return [] }
         return HiDPIOverride.presetSizes(nativeWidth: native.width, nativeHeight: native.height)
+    }
+
+    /// The HiDPI size that matches the UI density of Apple's own displays (see
+    /// `HiDPIOverride.defaultSize`), e.g. 2560x1440 on a 27" QHD panel.
+    public static func defaultHiDPISize(for display: Display) -> LogicalSize? {
+        guard let native = nativeSize(for: display) else { return nil }
+        let widthMM = Double(CGDisplayScreenSize(display.id).width)
+        return HiDPIOverride.defaultSize(in: presetSizes(for: display), native: native, physicalWidthMM: widthMM)
     }
 
     /// True once macOS offers HiDPI sizes beyond the usual half-native one.
@@ -104,11 +112,6 @@ public enum OverrideInstaller {
             let directory = (destination as NSString).deletingLastPathComponent
             try Privileged.run("rm -f \(q(destination)) && (rmdir \(q(directory)) 2>/dev/null || true)")
         }
-    }
-
-    /// Shows macOS's own restart confirmation.
-    public static func requestRestart() {
-        _ = NSAppleScript(source: "tell application \"loginwindow\" to «event aevtrrst»")?.executeAndReturnError(nil)
     }
 
     static func backupURL(for display: Display) -> URL {

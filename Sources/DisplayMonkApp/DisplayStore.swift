@@ -29,11 +29,24 @@ final class DisplayStore: ObservableObject {
         lastRefresh = Date()
     }
 
-    /// Re-creates virtual HiDPI screens that were on when the app last quit.
+    /// Brings back HiDPI that was on when the app last quit. Where a permanent configuration
+    /// has taken effect since (after a restart), the same size is selected natively instead
+    /// of re-creating the virtual screen.
     func restoreVirtualHiDPI() {
         for state in displays where Settings.bool(.virtualHiDPI, for: state.display) && !state.display.isVirtualHiDPI {
-            state.enableVirtualHiDPI()
+            if state.hasExtendedHiDPI {
+                Settings.set(false, .virtualHiDPI, for: state.display)
+                state.applyNativeHiDPI()
+            } else {
+                state.enableVirtualHiDPI()
+            }
         }
+    }
+
+    /// The display other displays are placed relative to: the built-in one, else the main one.
+    func arrangementReference(for state: DisplayState) -> DisplayState? {
+        let others = displays.filter { $0.id != state.id }
+        return others.first { $0.display.isBuiltIn } ?? others.first { $0.display.isMain } ?? others.first
     }
 
     func resumeWrites() {
@@ -83,6 +96,8 @@ final class DisplayState: ObservableObject, Identifiable {
     @Published private(set) var overrideStatus = OverrideStatus.notInstalled
     @Published private(set) var hasExtendedHiDPI = false
     @Published var isWorking = false
+    /// Bounds in global display space, refreshed with the modes.
+    @Published private(set) var frame = DisplayRect(x: 0, y: 0, width: 0, height: 0)
 
     let supportedMethods: [BrightnessMethod]
     private let queue: DispatchQueue
@@ -160,6 +175,7 @@ final class DisplayState: ObservableObject, Identifiable {
         modes = DisplayModes.available(for: modeTarget)
         currentMode = DisplayModes.current(for: modeTarget)
         rotation = DisplayRotation.current(for: modeTarget)
+        frame = DisplayArrangement.rect(of: display)
     }
 
     func refreshHiDPI() {
@@ -187,13 +203,24 @@ final class DisplayState: ObservableObject, Identifiable {
     }
 
     var isHiDPIOn: Bool {
-        display.isVirtualHiDPI || hasExtendedHiDPI
+        display.isVirtualHiDPI || currentMode?.isHiDPI == true
     }
 
     var hiDPIStatusText: String? {
-        if display.isVirtualHiDPI { return "Using a virtual screen" }
-        if overrideStatus == .installed, !hasExtendedHiDPI { return "Restart your Mac to finish" }
-        return nil
+        guard display.isVirtualHiDPI else { return nil }
+        return overrideStatus == .installed
+            ? "Virtual screen until your next restart, then permanent"
+            : "Using a virtual screen while Display Monk runs"
+    }
+
+    /// The HiDPI size to use when HiDPI is turned on: the last one chosen, else the size that
+    /// matches Apple's display density.
+    var preferredHiDPISize: LogicalSize? {
+        Settings.size(.hiDPISize, for: display) ?? defaultHiDPISize
+    }
+
+    var defaultHiDPISize: LogicalSize? {
+        OverrideInstaller.defaultHiDPISize(for: display)
     }
 
     /// One entry per distinct size and scaling, at the refresh rate closest to the current one.
@@ -207,11 +234,27 @@ final class DisplayState: ObservableObject, Identifiable {
         }
     }
 
-    /// Sizes for the resolution slider, smallest first: only HiDPI sizes once HiDPI is on.
-    var sliderChoices: [ModeDescriptor] {
-        let choices = resolutionChoices
-        let hiDPI = choices.filter(\.isHiDPI)
-        return (isHiDPIOn && hiDPI.count > 1 ? hiDPI : choices).sorted { $0.width < $1.width }
+    /// HiDPI sizes for the resolution menu, largest first.
+    var hiDPIChoices: [ModeDescriptor] {
+        resolutionChoices.filter(\.isHiDPI)
+    }
+
+    /// The panel's own unscaled size.
+    var nativeLoDPIChoice: ModeDescriptor? {
+        let native = OverrideInstaller.nativeSize(for: display)
+        return resolutionChoices.first { !$0.isHiDPI && $0.width == native?.width && $0.height == native?.height }
+            ?? resolutionChoices.first { !$0.isHiDPI }
+    }
+
+    /// Every other unscaled size, for the "More" submenu.
+    var otherLoDPIChoices: [ModeDescriptor] {
+        let native = nativeLoDPIChoice
+        return resolutionChoices.filter { !$0.isHiDPI && $0.id != native?.id }
+    }
+
+    func isDefaultHiDPI(_ mode: ModeDescriptor) -> Bool {
+        guard mode.isHiDPI, let size = defaultHiDPISize else { return false }
+        return ModeList.closestHiDPI(to: size, in: modes, current: currentMode)?.width == mode.width
     }
 
     /// Refresh rates available at the current size and scaling.
@@ -295,6 +338,9 @@ final class DisplayState: ObservableObject, Identifiable {
     func apply(_ mode: ModeDescriptor) {
         let previous = currentMode
         let target = modeTarget
+        if mode.isHiDPI {
+            Settings.set(LogicalSize(width: mode.width, height: mode.height), .hiDPISize, for: display)
+        }
         do {
             try DisplayModes.apply(mode, to: target)
         } catch {
@@ -335,10 +381,36 @@ final class DisplayState: ObservableObject, Identifiable {
 
     // MARK: HiDPI
 
+    /// Turns HiDPI on right away: natively when macOS already offers the HiDPI sizes (a
+    /// permanent configuration is active), otherwise with a virtual screen. Never needs a restart.
+    func enableHiDPI() {
+        if hasExtendedHiDPI {
+            applyNativeHiDPI()
+        } else {
+            enableVirtualHiDPI()
+        }
+    }
+
+    /// Turns HiDPI off right away: removes the virtual screen, or switches to the native
+    /// unscaled resolution.
+    func disableHiDPI() {
+        if display.isVirtualHiDPI {
+            disableVirtualHiDPI()
+        } else if let native = nativeLoDPIChoice {
+            apply(native)
+        }
+    }
+
+    /// Selects the preferred HiDPI size, or the closest one macOS offers.
+    func applyNativeHiDPI() {
+        refreshModes()
+        guard let size = preferredHiDPISize, let mode = ModeList.closestHiDPI(to: size, in: modes, current: currentMode) else { return }
+        apply(mode)
+    }
+
     func enableVirtualHiDPI() {
         let sizes = OverrideInstaller.presetSizes(for: display)
-        let native = OverrideInstaller.nativeSize(for: display)
-        let initial = native.flatMap { HiDPIOverride.defaultSize(in: sizes, nativeWidth: $0.width) }
+        let initial = preferredHiDPISize
         isWorking = true
         VirtualMirror.enable(for: display, sizes: sizes, initialSize: initial) { [weak self] result in
             guard let self else { return }
@@ -356,6 +428,29 @@ final class DisplayState: ObservableObject, Identifiable {
     func disableVirtualHiDPI() {
         VirtualMirror.disable(for: id)
         Settings.set(false, .virtualHiDPI, for: display)
+    }
+
+    // MARK: Arrangement
+
+    func placement(relativeTo reference: DisplayState) -> (Placement, PlacementAlignment)? {
+        Arrangement.placement(of: frame, relativeTo: reference.frame)
+    }
+
+    func move(_ placement: Placement, _ alignment: PlacementAlignment, relativeTo reference: DisplayState) {
+        do {
+            try DisplayArrangement.move(display, placement, alignment, relativeTo: reference.display)
+        } catch {
+            NSLog("Display Monk: could not move \(display.name): \(error)")
+        }
+        refreshModes()
+    }
+
+    func makeMain(among displays: [DisplayState]) {
+        do {
+            try DisplayArrangement.makeMain(display, among: displays.map(\.display))
+        } catch {
+            NSLog("Display Monk: could not make \(display.name) the main display: \(error)")
+        }
     }
 
     // MARK: Write queue
@@ -422,6 +517,7 @@ enum Settings {
         case brightnessMethod
         case combined
         case virtualHiDPI
+        case hiDPISize
     }
 
     private static func key(_ key: Key, _ display: Display) -> String {
@@ -438,6 +534,15 @@ enum Settings {
 
     static func bool(_ key: Key, for display: Display, default defaultValue: Bool = false) -> Bool {
         UserDefaults.standard.object(forKey: self.key(key, display)) as? Bool ?? defaultValue
+    }
+
+    static func size(_ key: Key, for display: Display) -> LogicalSize? {
+        let parts = (string(key, for: display) ?? "").split(separator: "x").compactMap { Int($0) }
+        return parts.count == 2 ? LogicalSize(width: parts[0], height: parts[1]) : nil
+    }
+
+    static func set(_ value: LogicalSize, _ key: Key, for display: Display) {
+        set(value.description, key, for: display)
     }
 
     static func set(_ value: Any, _ key: Key, for display: Display) {
