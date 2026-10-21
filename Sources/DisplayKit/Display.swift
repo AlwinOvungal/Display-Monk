@@ -7,16 +7,20 @@ public struct Display: Identifiable, Hashable, Sendable {
     public let id: CGDirectDisplayID
     public let name: String
     public let isBuiltIn: Bool
-    public let isMain: Bool
     public let vendorID: UInt32
     public let modelID: UInt32
     public let serialNumber: UInt32
     public let unitNumber: UInt32
+    /// The display whose modes decide the desktop size. It is the display itself, unless it
+    /// mirrors a Display Monk HiDPI virtual screen; then that screen's modes are used.
+    public let modeTarget: CGDirectDisplayID
+    public var isMain: Bool { CGDisplayIsMain(modeTarget) != 0 }
+    public var isVirtualHiDPI: Bool { modeTarget != id }
 
-    init(id: CGDirectDisplayID) {
+    init(id: CGDirectDisplayID, modeTarget: CGDirectDisplayID? = nil) {
         self.id = id
+        self.modeTarget = modeTarget ?? id
         isBuiltIn = CGDisplayIsBuiltin(id) != 0
-        isMain = CGDisplayIsMain(id) != 0
         vendorID = CGDisplayVendorNumber(id)
         modelID = CGDisplayModelNumber(id)
         serialNumber = CGDisplaySerialNumber(id)
@@ -31,8 +35,9 @@ public struct Display: Identifiable, Hashable, Sendable {
         return serialNumber != 0 ? "\(base)-\(serialNumber)" : "\(base)-u\(unitNumber)"
     }
 
+    /// The screen showing this display's desktop (a mirrored display has none of its own).
     public var screen: NSScreen? {
-        NSScreen.screens.first { $0.displayID == id }
+        NSScreen.screens.first { $0.displayID == modeTarget }
     }
 
     var selectable: SelectableDisplay {

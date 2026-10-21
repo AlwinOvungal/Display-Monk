@@ -11,6 +11,8 @@ Requires macOS 13 Ventura or later. Works on both Apple Silicon and Intel Macs.
 | | Menu bar app | CLI |
 |---|---|---|
 | Brightness: native (Apple displays), DDC (external monitors) or software (gamma) | ✓ | ✓ (native, DDC) |
+| Combined brightness: backlight first, then software dimming down to black | ✓ | |
+| High Resolution (HiDPI) for external displays, with a resolution slider | ✓ | ✓ (`hidpi`) |
 | Contrast, speaker volume and mute over DDC | ✓ | ✓ |
 | Input switching (HDMI, DisplayPort, USB-C, …) | ✓ | ✓ |
 | Raw read/write of any VCP code | | ✓ |
@@ -22,8 +24,15 @@ Requires macOS 13 Ventura or later. Works on both Apple Silicon and Intel Macs.
 ## Install
 
 Download `DisplayMonk.zip` from the latest CI run's artifacts (Actions → Build → DisplayMonk),
-unzip it and move **Display Monk.app** to `/Applications`. Builds are ad-hoc signed, so the first
-time you open it, right-click the app and choose **Open**.
+unzip it and move **Display Monk.app** to `/Applications`.
+
+Builds aren't signed with an Apple Developer ID, so macOS blocks the first launch ("Apple could
+not verify…"). Click **Done**, then either:
+
+- open **System Settings → Privacy & Security**, scroll to **Security** and click **Open Anyway**, or
+- run `xattr -dr com.apple.quarantine "/Applications/Display Monk.app"` in Terminal.
+
+The app lives in the menu bar (sun icon); it has no Dock icon or window.
 
 The `displaymonk` command-line tool is in the same artifact. Put it somewhere on your `PATH`,
 for example `/usr/local/bin`.
@@ -53,7 +62,13 @@ displaymonk set contrast 70          # raw VCP write
 displaymonk modes                    # * marks the current mode
 displaymonk set-mode 1920x1080@60 --hidpi
 displaymonk rotate 90
+displaymonk hidpi                    # HiDPI status of the first external display
+sudo displaymonk hidpi enable        # add HiDPI resolutions (restart to use them)
+sudo displaymonk hidpi disable
 ```
+
+`set` only writes the everyday controls (brightness, contrast, volume, mute, input) unless you
+pass `--force`, and level values are capped at the maximum the monitor reports.
 
 `-d/--display` accepts a list index, `main`, `builtin`, `external`, `id:<n>` or part of a
 display name. DDC commands default to the first display with a DDC connection, and the others
@@ -61,6 +76,48 @@ default to the main display.
 
 Software dimming only lasts while the process that set it is running (macOS restores gamma
 tables when it exits), so it is only offered in the app.
+
+## HiDPI on external displays
+
+Apple Silicon Macs don't offer sharp HiDPI ("Retina") sizes for most sub-4K monitors, such as
+2048×1152 on a 2560×1440 panel. Turn on **High Resolution (HiDPI)** for a display in the menu,
+then pick a size with the **Resolution** slider. There are two ways:
+
+- **Install (recommended).** Adds HiDPI sizes to macOS's own configuration for that display
+  model, in `/Library/Displays/Contents/Resources/Overrides/`. It needs your administrator
+  password and a restart, then works even when Display Monk isn't running. If another app
+  (for example BetterDisplay) already configured the display, its settings are kept and a
+  backup is restored when you turn HiDPI off.
+- **Virtual screen.** Works immediately and on every Mac, including M4/M5 models that ignore the
+  configuration for some sizes. A HiDPI virtual screen renders the desktop and your display
+  mirrors it. It only lasts while Display Monk is running.
+
+Both only change how the desktop is rendered and scaled. The monitor keeps getting its normal
+native signal and refresh rate, and no EDID is overridden. HiDPI renders twice the pixels, so
+it uses somewhat more graphics power (as Apple's own Retina modes do).
+
+To undo it, turn the switch off or run `sudo displaymonk hidpi disable`, then restart. If you
+ever need to recover by hand, delete the display's file under
+`/Library/Displays/Contents/Resources/Overrides/` and restart.
+
+## Brightness down to black
+
+With **Combined** brightness (the default for monitors with DDC and Apple displays), the top
+three quarters of the slider control the real backlight. The bottom quarter dims the image in
+software once the backlight is at its minimum, all the way to black. The on-screen display shows
+"Min HW" in that range. Software dimming only changes the gamma table, so macOS undoes it when
+Display Monk quits. Turn Combined off in the display's brightness menu (Native/DDC).
+
+## Safety and battery
+
+- **No polling:** the app does nothing while idle. Values are re-read only at launch, after
+  displays change, and when you open the menu.
+- **Gentle on monitors:** repeated identical DDC writes are skipped and writes are spaced at
+  least 100 ms apart. Nothing is sent while displays sleep or for 2 s after they wake. The menu
+  only sends everyday controls, always within the monitor's reported range.
+- **Reversible changes:** a refresh rate change, a change to a non-native unscaled size, or a
+  rotation must be confirmed within 15 seconds or it reverts. HiDPI sizes and virtual-screen
+  sizes only change rendering, so they apply without a prompt.
 
 ## Permissions
 
@@ -78,6 +135,8 @@ tables when it exits), so it is only offered in the app.
 | Software dimming | Scaled gamma tables with `CGSetDisplayTransferByTable` |
 | Modes and HiDPI | `CGDisplayCopyAllDisplayModes` with `kCGDisplayShowDuplicateLowResolutionModes`, `CGConfigureDisplayWithDisplayMode` |
 | Rotation | `MPDisplay.setOrientation:` from the private MonitorPanel framework |
+| HiDPI (install) | A display override plist with `scale-resolutions` entries (framebuffer width and height at 2× plus a HiDPI flag), written with administrator rights |
+| HiDPI (virtual screen) | A `CGVirtualDisplay` with HiDPI modes, mirrored to the physical display with `CGConfigureDisplayMirrorOfDisplay` |
 | Media keys | A `CGEventTap` for `NX_SYSDEFINED` auxiliary-button events |
 
 Private symbols are resolved at runtime with `dlsym`. If a future macOS removes one, the feature
@@ -106,14 +165,21 @@ Unit tests cover everything that doesn't need a display. With a monitor attached
    keys change the external monitor under the pointer and show the HUD; set a display to
    *Software*, dim it, quit, and check the brightness returns to normal.
 6. Unplug and replug a monitor: the menu updates and DDC still works.
+7. Drag brightness to 0 on an external monitor: the backlight reaches its minimum, then the
+   image fades to black. Quit the app and it comes back.
+8. Turn on HiDPI → Install, restart, and check the Resolution slider offers HiDPI sizes such as
+   2048 × 1152. If not, use HiDPI → Use Virtual Screen.
+9. Leave the menu closed for a minute: Activity Monitor shows about 0% CPU for Display Monk.
 
 ## Acknowledgements
 
 The DDC techniques here are well established in the open-source community. Thanks to
 [MonitorControl](https://github.com/MonitorControl/MonitorControl),
 [m1ddc](https://github.com/waydabber/m1ddc) and
-[displayplacer](https://github.com/jakehilborn/displayplacer) (all MIT-licensed), whose
-published work documents the Apple Silicon DDC path, display matching and rotation.
+[displayplacer](https://github.com/jakehilborn/displayplacer),
+[DeskPad](https://github.com/Stengo/DeskPad) and [Acuity](https://github.com/paulhkang94/acuity)
+(all MIT-licensed), whose published work documents the Apple Silicon DDC path, display
+matching, rotation, virtual displays and the display override format.
 
 Display Monk is an independent project and is not affiliated with BetterDisplay or its developer.
 
