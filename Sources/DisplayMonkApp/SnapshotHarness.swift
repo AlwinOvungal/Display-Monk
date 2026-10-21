@@ -25,18 +25,19 @@ enum SnapshotHarness {
             (0.5, bothDirections),
             (1, { drift() }),
             (0.5, { capture("4-not-matched") }),
-            (0.5, { DisplayStore.shared.matchAll(); check("Match aligns everyone", matched()) }),
+            (1.5, { DisplayStore.shared.matchAll(); check("Match aligns everyone", matched()) }),
             (1, detach),
             (1, { capture("5-detached") }),
-            (0.5, { expandAll(); }),
+            (1.5, { expandAll(); }),
             (1.5, { capture("6-expanded") }),
+            (1.5, { capture("6b-expanded-dark", dark: true) }),
             (0.5, disconnectWhileSynced),
             (4, { reload("after disconnect"); }),
             (2, { check("one display after disconnect", DisplayStore.shared.displays.count == 1); capture("7-one-display-sync-on") }),
             (0.5, { setFirst(0.35); addSecondDisplay() }),
             (4, { reload("after reconnect") }),
             (3, { check("reconnected display took the connected display's level", matched(), detail: levels()); capture("8-reconnected") }),
-            (0.5, finish),
+            (2, finish),
         ])
     }
 
@@ -173,7 +174,16 @@ enum SnapshotHarness {
             host.layoutSubtreeIfNeeded()
             if let rep = host.bitmapImageRepForCachingDisplay(in: host.bounds) {
                 host.cacheDisplay(in: host.bounds, to: rep)
-                try? rep.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(dir)/\(name).png"))
+                // cacheDisplay leaves the window background out; put the view on one.
+                let image = NSImage(size: host.bounds.size)
+                image.lockFocus()
+                (dark ? NSColor(white: 0.17, alpha: 1) : NSColor(white: 0.95, alpha: 1)).setFill()
+                NSRect(origin: .zero, size: host.bounds.size).fill()
+                rep.draw(in: NSRect(origin: .zero, size: host.bounds.size))
+                image.unlockFocus()
+                if let tiff = image.tiffRepresentation, let bitmap = NSBitmapImageRep(data: tiff) {
+                    try? bitmap.representation(using: .png, properties: [:])?.write(to: URL(fileURLWithPath: "\(dir)/\(name).png"))
+                }
                 say("captured \(name) \(Int(host.bounds.width))×\(Int(host.bounds.height))")
             }
             window.orderOut(nil)
