@@ -1,0 +1,27 @@
+name: Snapshots (temporary)
+
+on:
+  push:
+    branches: [claude/tmp-menu-snapshots]
+
+jobs:
+  snapshots:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift build
+      - name: Displays on the runner
+        run: system_profiler SPDisplaysDataType | sed -n '1,60p'
+      - name: Run the harness
+        run: |
+          mkdir -p snapshots
+          DISPLAYMONK_SNAPSHOT_DIR="$PWD/snapshots" .build/debug/DisplayMonkApp > snapshots/app.log 2>&1 &
+          PID=$!
+          for i in $(seq 1 120); do kill -0 $PID 2>/dev/null || break; sleep 1; done
+          kill $PID 2>/dev/null || true
+          cat snapshots/results.txt || tail -80 snapshots/app.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: snapshots
+          path: snapshots
