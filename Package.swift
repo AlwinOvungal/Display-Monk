@@ -38,7 +38,7 @@ targets += [
     ),
     .executableTarget(
         name: "DisplayMonkApp",
-        dependencies: ["DisplayKit", "DisplayMonkCore"],
+        dependencies: ["DisplayKit", "DisplayMonkCore", "CGVirtualDisplayBridge"],
         linkerSettings: [.linkedFramework("ServiceManagement")]
     ),
     .executableTarget(
