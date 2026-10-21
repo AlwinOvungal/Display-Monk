@@ -10,7 +10,7 @@ struct DisplayMonkApp: App {
     // The menu bar item and its panel are managed by StatusItemController; the app has no
     // windows of its own.
     var body: some Scene {
-        Settings { EmptyView() }
+        SwiftUI.Settings { EmptyView() }
     }
 }
 
