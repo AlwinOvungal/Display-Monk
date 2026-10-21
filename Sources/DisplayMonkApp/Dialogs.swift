@@ -66,83 +66,45 @@ enum ChangeConfirmation {
     }
 }
 
-/// Turning HiDPI on and off, with the explanations and confirmations around it.
+/// The optional permanent HiDPI configuration. The switch in the menu never needs a restart:
+/// it uses a virtual screen until a permanent configuration takes over at the next restart.
 enum HiDPIFlow {
-    static func enable(_ state: DisplayState) {
-        let alert = NSAlert()
-        alert.messageText = "Turn on HiDPI for \(state.display.name)?"
-        alert.informativeText = """
-        Install adds sharper, scalable HiDPI resolutions to macOS's configuration for this \
-        display. It needs your administrator password and a restart, and then works without \
-        Display Monk running.
-
-        Virtual Screen works right away, without a restart, but only while Display Monk is \
-        running. Use it if Install has no effect on your Mac.
-
-        Either way, only the desktop scaling changes; the signal sent to the monitor stays \
-        the same. HiDPI uses slightly more graphics power.
-        """
-        alert.addButton(withTitle: "Install (Restart Needed)")
-        alert.addButton(withTitle: "Use Virtual Screen")
-        alert.addButton(withTitle: "Cancel")
-        NSApp.activate(ignoringOtherApps: true)
-        switch alert.runModal() {
-        case .alertFirstButtonReturn: installOverride(state)
-        case .alertSecondButtonReturn: state.enableVirtualHiDPI()
-        default: break
-        }
-    }
-
-    static func disable(_ state: DisplayState) {
-        if state.display.isVirtualHiDPI {
-            state.disableVirtualHiDPI()
-            return
-        }
-        switch state.overrideStatus {
-        case .installed:
-            guard Alerts.confirm(
-                "Remove HiDPI resolutions for \(state.display.name)?",
-                "This needs your administrator password, and takes effect after a restart.",
-                confirm: "Remove"
-            ) else { return }
-            run(state, restartReason: "The HiDPI resolutions are removed after a restart.") {
-                try OverrideInstaller.remove(for: state.display)
-            }
-        case .foreign:
-            Alerts.show(
-                "HiDPI is set up by another app",
-                "This display's HiDPI resolutions come from another app's display configuration (for example BetterDisplay). Turn it off in that app."
-            )
-        case .notInstalled:
-            break
-        }
-    }
-
-    private static func installOverride(_ state: DisplayState) {
+    static func makePermanent(_ state: DisplayState) {
         if state.overrideStatus == .foreign {
             guard Alerts.confirm(
                 "This display already has a configuration from another app",
-                "Display Monk will keep its settings and add HiDPI resolutions to it. A backup of the original is kept and restored if you turn HiDPI off again.",
+                "Display Monk will keep its settings and add HiDPI resolutions to it. A backup of the original is kept and restored if you remove permanent HiDPI again.",
                 confirm: "Continue"
             ) else { return }
         }
-        run(state, restartReason: "Restart your Mac to use the new HiDPI resolutions.") {
-            try OverrideInstaller.install(for: state.display)
-        }
+        guard run({ try OverrideInstaller.install(for: state.display) }) else { return }
+        state.refreshHiDPI()
+        Alerts.show(
+            "HiDPI will become permanent",
+            "Nothing else to do: keep using HiDPI as it is. After your next restart, Display Monk switches \(state.display.name) from the virtual screen to native HiDPI when it starts (turn on Launch at login to make this automatic). From then on HiDPI stays on even when the app isn't running."
+        )
     }
 
-    private static func run(_ state: DisplayState, restartReason: String, _ work: () throws -> Void) {
+    static func removePermanent(_ state: DisplayState) {
+        guard Alerts.confirm(
+            "Remove permanent HiDPI for \(state.display.name)?",
+            "The HiDPI sizes disappear after your next restart. You can still use HiDPI with the switch, which then uses a virtual screen.",
+            confirm: "Remove"
+        ) else { return }
+        guard run({ try OverrideInstaller.remove(for: state.display) }) else { return }
+        state.refreshHiDPI()
+    }
+
+    /// Returns false if the user cancelled the password prompt or the change failed.
+    private static func run(_ work: () throws -> Void) -> Bool {
         do {
             try work()
+            return true
         } catch Privileged.Failure.cancelled {
-            return
+            return false
         } catch {
             Alerts.show("Could not change the display configuration", "\(error)")
-            return
-        }
-        state.refreshHiDPI()
-        if Alerts.confirm("Restart now?", restartReason, confirm: "Restart…", cancel: "Later") {
-            OverrideInstaller.requestRestart()
+            return false
         }
     }
 }

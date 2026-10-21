@@ -53,10 +53,20 @@ public enum HiDPIOverride {
         return sizes
     }
 
-    /// The preset to switch to right after enabling HiDPI: about 80% of the native width,
-    /// e.g. 2048x1152 on a 2560x1440 panel.
-    public static func defaultSize(in sizes: [LogicalSize], nativeWidth: Int) -> LogicalSize? {
-        let target = Double(nativeWidth) * 0.8
+    /// Apple's desktop UI density in points per inch: the 27" Studio Display looks like
+    /// 2560x1440 and the 32" Pro Display XDR like 3008x1692, both about 110.
+    public static let appleDesktopPointsPerInch = 110.0
+
+    /// The size that makes the UI as large as on Apple's own displays, e.g. 2560x1440 on a 27"
+    /// QHD or 4K panel (BenQ's recommended HiDPI setting for its 2K Mac monitors). Without a
+    /// physical size, the native size is used.
+    public static func defaultSize(in sizes: [LogicalSize], native: LogicalSize, physicalWidthMM: Double?) -> LogicalSize? {
+        let target: Double
+        if let physicalWidthMM, physicalWidthMM > 0 {
+            target = appleDesktopPointsPerInch * physicalWidthMM / 25.4
+        } else {
+            target = Double(native.width)
+        }
         return sizes.min { abs(Double($0.width) - target) < abs(Double($1.width) - target) }
     }
 }

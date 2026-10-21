@@ -92,9 +92,8 @@ public final class VirtualMirror {
     private func startMirroring(attempt: Int, initialSize: LogicalSize?, completion: @escaping (Result<Void, Error>) -> Void) {
         let error = configureMirror(of: physicalID, source: virtualID)
         if error == .success {
-            if let initialSize, let mode = DisplayModes.available(for: virtualID).first(where: {
-                $0.isHiDPI && $0.width == initialSize.width && $0.height == initialSize.height
-            }) {
+            let modes = DisplayModes.available(for: virtualID)
+            if let initialSize, let mode = ModeList.closestHiDPI(to: initialSize, in: modes, current: nil) {
                 try? DisplayModes.apply(mode, to: virtualID)
             }
             return completion(.success(()))

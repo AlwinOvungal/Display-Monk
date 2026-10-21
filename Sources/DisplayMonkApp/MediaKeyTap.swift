@@ -34,10 +34,12 @@ final class MediaKeyTap {
         }
         retryDelay = 3
         retryWindowStart = nil
-        let systemDefined = CGEventMask(1 << 14) // NX_SYSDEFINED
+        // Volume and older brightness keys arrive as NX_SYSDEFINED events; current Apple
+        // keyboards send brightness as ordinary key-down events (key codes 144 and 145).
+        let events = CGEventMask(1 << 14) | CGEventMask(1 << CGEventType.keyDown.rawValue)
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
-            eventsOfInterest: systemDefined, callback: mediaKeyCallback, userInfo: nil
+            eventsOfInterest: events, callback: mediaKeyCallback, userInfo: nil
         ) else {
             NSLog("Display Monk: could not create the media key event tap")
             return
@@ -127,6 +129,16 @@ fileprivate enum MediaKey: Int {
     case brightnessUp = 2
     case brightnessDown = 3
     case mute = 7
+
+    /// Key codes of the brightness keys on current Apple keyboards, which send them as key-down
+    /// events rather than media-key events.
+    init?(brightnessKeyCode: Int64) {
+        switch brightnessKeyCode {
+        case 144: self = .brightnessUp
+        case 145: self = .brightnessDown
+        default: return nil
+        }
+    }
 }
 
 /// Runs on the main thread: the tap's run loop source is added to the main run loop.
@@ -136,6 +148,13 @@ private func mediaKeyCallback(proxy _: CGEventTapProxy, type: CGEventType, event
         MediaKeyTap.shared.reenable()
         return passThrough
     }
+    let fine = event.flags.contains(.maskShift) && event.flags.contains(.maskAlternate)
+    if type == .keyDown {
+        // Every other key returns straight away, so typing is unaffected.
+        let keyCode = event.getIntegerValueField(.keyboardEventKeycode)
+        guard let key = MediaKey(brightnessKeyCode: keyCode) else { return passThrough }
+        return MediaKeyTap.shared.handle(key, isDown: true, fine: fine) ? nil : passThrough
+    }
     // Media keys arrive as NX_SYSDEFINED events with subtype NX_SUBTYPE_AUX_CONTROL_BUTTONS (8).
     guard type.rawValue == 14, let nsEvent = NSEvent(cgEvent: event), nsEvent.subtype.rawValue == 8 else {
         return passThrough
@@ -143,6 +162,5 @@ private func mediaKeyCallback(proxy _: CGEventTapProxy, type: CGEventType, event
     let data = nsEvent.data1
     guard let key = MediaKey(rawValue: (data & 0xFFFF_0000) >> 16) else { return passThrough }
     let isDown = (data & 0xFF00) >> 8 == 0x0A
-    let fine = event.flags.contains(.maskShift) && event.flags.contains(.maskAlternate)
     return MediaKeyTap.shared.handle(key, isDown: isDown, fine: fine) ? nil : passThrough
 }

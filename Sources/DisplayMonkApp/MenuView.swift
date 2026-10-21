@@ -1,3 +1,4 @@
+import ApplicationServices
 import DisplayKit
 import DisplayMonkCore
 import SwiftUI
@@ -8,6 +9,7 @@ struct MenuView: View {
     @AppStorage(Preferences.volumeKeysKey) private var volumeKeys = false
     @AppStorage(Preferences.showOSDKey) private var showOSD = true
     @State private var launchAtLogin = LoginItem.isEnabled
+    @State private var accessibilityTrusted = AXIsProcessTrusted()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -15,7 +17,7 @@ struct MenuView: View {
                 Text("No displays found").foregroundStyle(.secondary)
             }
             ForEach(store.displays) { state in
-                DisplaySection(state: state)
+                DisplaySection(state: state, store: store)
             }
             VStack(alignment: .leading, spacing: 6) {
                 Toggle("Brightness keys control external displays", isOn: keyBinding($brightnessKeys))
@@ -29,6 +31,9 @@ struct MenuView: View {
             .toggleStyle(.checkbox)
             .font(.callout)
             .padding(.horizontal, 4)
+            if brightnessKeys || volumeKeys, !accessibilityTrusted {
+                accessibilityWarning
+            }
             HStack {
                 Button("Refresh") { store.reload() }
                 Spacer()
@@ -42,7 +47,29 @@ struct MenuView: View {
         .onAppear {
             store.refreshIfStale()
             MediaKeyTap.shared.update()
+            accessibilityTrusted = AXIsProcessTrusted()
         }
+    }
+
+    /// Every new build of an unsigned app invalidates its old Accessibility grant, even though
+    /// System Settings still shows it switched on.
+    private var accessibilityWarning: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Label("Keys need Accessibility access", systemImage: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+            Text("After updating Display Monk, remove it from the Accessibility list (–) and add it again.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Button("Open Accessibility Settings") {
+                if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") {
+                    NSWorkspace.shared.open(url)
+                }
+            }
+            .controlSize(.small)
+        }
+        .font(.callout)
+        .padding(.horizontal, 4)
     }
 
     /// Key toggles start or stop the event tap, which asks for Accessibility access the first time.
@@ -50,12 +77,14 @@ struct MenuView: View {
         Binding(get: { setting.wrappedValue }, set: { value in
             setting.wrappedValue = value
             MediaKeyTap.shared.update()
+            accessibilityTrusted = AXIsProcessTrusted()
         })
     }
 }
 
 struct DisplaySection: View {
     @ObservedObject var state: DisplayState
+    @ObservedObject var store: DisplayStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
@@ -84,11 +113,14 @@ struct DisplaySection: View {
                         value: Binding(get: { volume }, set: state.setVolume)
                     )
                 }
-                if state.sliderChoices.count > 1 {
-                    ResolutionSlider(state: state)
+                if !state.resolutionChoices.isEmpty {
+                    ResolutionMenu(state: state)
                 }
                 if !state.display.isBuiltIn {
                     hiDPIToggle
+                }
+                if store.displays.count > 1 {
+                    arrangement
                 }
                 controls
             }
@@ -127,21 +159,84 @@ struct DisplaySection: View {
         .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Color.primary.opacity(0.08)))
     }
 
+    /// Takes effect immediately; no password, no restart.
     private var hiDPIToggle: some View {
         VStack(alignment: .leading, spacing: 2) {
-            Toggle(isOn: Binding(
-                get: { state.isHiDPIOn },
-                // Dialogs run after the current view update has finished.
-                set: { on in DispatchQueue.main.async { on ? HiDPIFlow.enable(state) : HiDPIFlow.disable(state) } }
-            )) {
-                Label("High Resolution (HiDPI)", systemImage: "sparkles")
+            HStack {
+                Toggle(isOn: Binding(
+                    get: { state.isHiDPIOn },
+                    // Mode changes run after the current view update has finished.
+                    set: { on in DispatchQueue.main.async { on ? state.enableHiDPI() : state.disableHiDPI() } }
+                )) {
+                    Label("High Resolution (HiDPI)", systemImage: "sparkles")
+                }
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .disabled(state.isWorking)
+                Spacer()
+                Menu {
+                    if state.overrideStatus == .installed {
+                        Button("Remove Permanent HiDPI…") { DispatchQueue.main.async { HiDPIFlow.removePermanent(state) } }
+                    } else {
+                        Button("Make HiDPI Permanent…") { DispatchQueue.main.async { HiDPIFlow.makePermanent(state) } }
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .menuStyle(.button)
+                .buttonStyle(.borderless)
+                .fixedSize()
+                .help("Permanent HiDPI works without Display Monk running, from your next restart")
             }
-            .toggleStyle(.switch)
-            .controlSize(.small)
-            .disabled(state.isWorking)
             if let status = state.hiDPIStatusText {
                 Text(status).font(.caption).foregroundStyle(.secondary)
             }
+        }
+    }
+
+    /// Position dropdowns relative to the MacBook (or main display), and "Set as Main".
+    @ViewBuilder private var arrangement: some View {
+        let reference = store.arrangementReference(for: state)
+        HStack(spacing: 8) {
+            Image(systemName: "rectangle.on.rectangle").frame(width: 20)
+            if !state.display.isBuiltIn, let reference {
+                let current = state.placement(relativeTo: reference)
+                let side = current?.0 ?? Arrangement.nearestPlacement(of: state.frame, relativeTo: reference.frame)
+                let name = reference.display.isBuiltIn ? "MacBook" : reference.display.name
+                Menu(current.map { positionLabel($0.0, name) } ?? "Custom position") {
+                    ForEach(Placement.allCases, id: \.self) { placement in
+                        Toggle(positionLabel(placement, name), isOn: Binding(
+                            get: { current?.0 == placement },
+                            set: { if $0 { state.move(placement, current?.1 ?? .center, relativeTo: reference) } }
+                        ))
+                    }
+                }
+                .fixedSize()
+                Menu(current.map { $0.1.label(for: $0.0) } ?? "Align") {
+                    ForEach(PlacementAlignment.allCases, id: \.self) { alignment in
+                        Toggle(alignment.label(for: side), isOn: Binding(
+                            get: { current?.1 == alignment },
+                            set: { if $0 { state.move(side, alignment, relativeTo: reference) } }
+                        ))
+                    }
+                }
+                .fixedSize()
+            }
+            Spacer(minLength: 0)
+            if !state.display.isMain {
+                Button("Set as Main") { state.makeMain(among: store.displays) }
+                    .help("Moves the menu bar and Dock to this display")
+            }
+        }
+        .controlSize(.small)
+    }
+
+    private func positionLabel(_ placement: Placement, _ reference: String) -> String {
+        switch placement {
+        case .left: "Left of \(reference)"
+        case .right: "Right of \(reference)"
+        case .above: "Above \(reference)"
+        case .below: "Below \(reference)"
         }
     }
 
@@ -193,9 +288,6 @@ struct LabeledSlider: View {
     let icon: String
     var iconAction: (() -> Void)?
     @Binding var value: Double
-    var range: ClosedRange<Double> = 0 ... 1
-    var step: Double?
-    var onRelease: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 3) {
@@ -208,11 +300,7 @@ struct LabeledSlider: View {
             .foregroundStyle(.secondary)
             HStack(spacing: 8) {
                 iconView.frame(width: 20)
-                if let step {
-                    Slider(value: $value, in: range, step: step, onEditingChanged: released)
-                } else {
-                    Slider(value: $value, in: range, onEditingChanged: released)
-                }
+                Slider(value: $value, in: 0 ... 1)
             }
         }
     }
@@ -224,35 +312,68 @@ struct LabeledSlider: View {
             Image(systemName: icon)
         }
     }
-
-    private func released(_ editing: Bool) {
-        if !editing { onRelease?() }
-    }
 }
 
-/// Picks a desktop size by dragging; the mode is applied when the slider is released.
-struct ResolutionSlider: View {
+/// The desktop size, as a dropdown: one mode change per choice, nothing while browsing.
+struct ResolutionMenu: View {
     @ObservedObject var state: DisplayState
-    @State private var position: Double?
 
     var body: some View {
-        let choices = state.sliderChoices
-        let current = choices.firstIndex {
-            $0.width == state.currentMode?.width && $0.height == state.currentMode?.height && $0.isHiDPI == state.currentMode?.isHiDPI
-        } ?? 0
-        let index = min(choices.count - 1, max(0, Int((position ?? Double(current)).rounded())))
-        let choice = choices[index]
-        LabeledSlider(
-            title: "Resolution",
-            valueText: "\(choice.width) × \(choice.height)" + (choice.isHiDPI ? "" : " (LoDPI)"),
-            icon: "arrow.up.left.and.arrow.down.right",
-            value: Binding(get: { position ?? Double(current) }, set: { position = $0 }),
-            range: 0 ... Double(choices.count - 1),
-            step: 1,
-            onRelease: {
-                if index != current { state.apply(choice) }
-                position = nil
+        HStack(spacing: 8) {
+            Image(systemName: "arrow.up.left.and.arrow.down.right").frame(width: 20)
+            Text("Resolution").foregroundStyle(.secondary)
+            Spacer()
+            Menu {
+                let hiDPI = state.hiDPIChoices
+                if !hiDPI.isEmpty {
+                    Section("HiDPI (sharp)") {
+                        ForEach(hiDPI.indices, id: \.self) { index in
+                            choice(hiDPI[index], note: note(for: hiDPI[index], index: index, count: hiDPI.count))
+                        }
+                    }
+                }
+                Section("Low resolution") {
+                    if let native = state.nativeLoDPIChoice {
+                        choice(native, note: "Native")
+                    }
+                    let others = state.otherLoDPIChoices
+                    if !others.isEmpty {
+                        Menu("More") {
+                            ForEach(others, id: \.self) { choice($0, note: nil) }
+                        }
+                    }
+                }
+            } label: {
+                Text(currentLabel).monospacedDigit()
             }
-        )
+            .menuStyle(.button)
+            .buttonStyle(.borderless)
+            .fixedSize()
+        }
+        .font(.callout)
+    }
+
+    private var currentLabel: String {
+        guard let mode = state.currentMode else { return "—" }
+        return "\(mode.width) × \(mode.height)" + (mode.isHiDPI ? " HiDPI" : "")
+    }
+
+    private func choice(_ mode: ModeDescriptor, note: String?) -> some View {
+        Toggle("\(mode.width) × \(mode.height)" + (note.map { " — \($0)" } ?? ""), isOn: Binding(
+            get: { isCurrent(mode) },
+            set: { if $0 { DispatchQueue.main.async { state.apply(mode) } } }
+        ))
+    }
+
+    private func note(for mode: ModeDescriptor, index: Int, count: Int) -> String? {
+        if state.isDefaultHiDPI(mode) { return "Default" }
+        if count > 1, index == 0 { return "More Space" }
+        if count > 1, index == count - 1 { return "Larger Text" }
+        return nil
+    }
+
+    private func isCurrent(_ mode: ModeDescriptor) -> Bool {
+        guard let current = state.currentMode else { return false }
+        return current.width == mode.width && current.height == mode.height && current.isHiDPI == mode.isHiDPI
     }
 }
