@@ -1,0 +1,125 @@
+import AppKit
+import ApplicationServices
+import DisplayKit
+import DisplayMonkCore
+
+/// Intercepts the brightness and volume keys and applies them to the display under the mouse
+/// pointer. Keys for displays macOS already controls (Apple displays, normal audio devices) are
+/// passed through untouched.
+final class MediaKeyTap {
+    static let shared = MediaKeyTap()
+
+    private var tap: CFMachPort?
+    private var source: CFRunLoopSource?
+    private var hasPrompted = false
+
+    private init() {}
+
+    func update() {
+        let wanted = Preferences.brightnessKeys || Preferences.volumeKeys
+        if wanted, tap == nil {
+            start()
+        } else if !wanted {
+            stop()
+        }
+    }
+
+    private func start() {
+        guard isTrusted() else {
+            // Access is granted in System Settings; check again until it is.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in self?.update() }
+            return
+        }
+        let systemDefined = CGEventMask(1 << 14) // NX_SYSDEFINED
+        guard let tap = CGEvent.tapCreate(
+            tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
+            eventsOfInterest: systemDefined, callback: mediaKeyCallback, userInfo: nil
+        ) else {
+            NSLog("Display Monk: could not create the media key event tap")
+            return
+        }
+        self.tap = tap
+        source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
+        CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    private func stop() {
+        if let tap { CGEvent.tapEnable(tap: tap, enable: false) }
+        if let source { CFRunLoopRemoveSource(CFRunLoopGetMain(), source, .commonModes) }
+        tap = nil
+        source = nil
+    }
+
+    /// Prompts for Accessibility access once per launch, then checks quietly.
+    private func isTrusted() -> Bool {
+        if hasPrompted { return AXIsProcessTrusted() }
+        hasPrompted = true
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        return AXIsProcessTrustedWithOptions(options)
+    }
+
+    fileprivate func reenable() {
+        if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
+    }
+
+    /// Returns true when the key was handled and must not reach the system.
+    fileprivate func handle(_ key: MediaKey, isDown: Bool, fine: Bool) -> Bool {
+        guard let state = DisplayStore.shared.displayUnderMouse else { return false }
+        switch key {
+        case .brightnessUp, .brightnessDown:
+            guard Preferences.brightnessKeys, state.brightnessMethod != .native else { return false }
+            if isDown {
+                state.setBrightness(LevelScale.step(state.brightness, up: key == .brightnessUp, fine: fine))
+                showOSD(icon: "sun.max.fill", level: state.brightness, on: state)
+            }
+            return true
+        case .volumeUp, .volumeDown:
+            guard Preferences.volumeKeys, let volume = state.volume else { return false }
+            if isDown {
+                state.setVolume(LevelScale.step(volume, up: key == .volumeUp, fine: fine))
+                showOSD(icon: "speaker.wave.2.fill", level: state.volume ?? 0, on: state)
+            }
+            return true
+        case .mute:
+            guard Preferences.volumeKeys, state.volume != nil else { return false }
+            if isDown {
+                state.setMuted(!state.muted)
+                showOSD(icon: state.muted ? "speaker.slash.fill" : "speaker.wave.2.fill", level: state.muted ? 0 : state.volume ?? 0, on: state)
+            }
+            return true
+        }
+    }
+
+    private func showOSD(icon: String, level: Double, on state: DisplayState) {
+        guard Preferences.showOSD else { return }
+        OSD.shared.show(icon: icon, level: level, on: state.display.screen)
+    }
+}
+
+fileprivate enum MediaKey: Int {
+    // NX_KEYTYPE_* values from IOKit/hidsystem/ev_keymap.h
+    case volumeUp = 0
+    case volumeDown = 1
+    case brightnessUp = 2
+    case brightnessDown = 3
+    case mute = 7
+}
+
+/// Runs on the main thread: the tap's run loop source is added to the main run loop.
+private func mediaKeyCallback(proxy _: CGEventTapProxy, type: CGEventType, event: CGEvent, refcon _: UnsafeMutableRawPointer?) -> Unmanaged<CGEvent>? {
+    let passThrough = Unmanaged.passUnretained(event)
+    if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+        MediaKeyTap.shared.reenable()
+        return passThrough
+    }
+    // Media keys arrive as NX_SYSDEFINED events with subtype NX_SUBTYPE_AUX_CONTROL_BUTTONS (8).
+    guard type.rawValue == 14, let nsEvent = NSEvent(cgEvent: event), nsEvent.subtype.rawValue == 8 else {
+        return passThrough
+    }
+    let data = nsEvent.data1
+    guard let key = MediaKey(rawValue: (data & 0xFFFF_0000) >> 16) else { return passThrough }
+    let isDown = (data & 0xFF00) >> 8 == 0x0A
+    let fine = event.flags.contains(.maskShift) && event.flags.contains(.maskAlternate)
+    return MediaKeyTap.shared.handle(key, isDown: isDown, fine: fine) ? nil : passThrough
+}

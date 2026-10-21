@@ -1,0 +1,38 @@
+name: Build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  core-linux:
+    name: Core tests (Linux)
+    runs-on: ubuntu-latest
+    container: swift:6.1
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift test
+
+  macos:
+    name: Build and test (macOS)
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - run: swift --version
+      - name: Build (debug, native arch)
+        run: swift build
+      - name: Test
+        run: swift test
+      - name: Bundle (release, universal)
+        run: scripts/bundle.sh
+      - name: CLI smoke test
+        run: |
+          build/displaymonk --version
+          build/displaymonk list || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DisplayMonk
+          path: |
+            build/DisplayMonk.zip
+            build/displaymonk
