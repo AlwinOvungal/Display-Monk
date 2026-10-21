@@ -2,11 +2,12 @@
 # Builds a universal (arm64 + x86_64) release and packages it:
 #   build/Display Monk.app   the menu bar app (ad-hoc signed)
 #   build/DisplayMonk.zip    the app, zipped for distribution
+#   build/DisplayMonk.dmg    the app on a disk image, with an Applications shortcut
 #   build/displaymonk        the command-line tool
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-0.2.0}"
 ARCH_FLAGS=(--arch arm64 --arch x86_64)
 
 swift build -c release "${ARCH_FLAGS[@]}"
@@ -25,4 +26,12 @@ codesign --force --sign - "$APP"
 codesign --force --sign - build/displaymonk
 
 (cd build && ditto -c -k --keepParent "Display Monk.app" DisplayMonk.zip)
-echo "Built $APP, build/DisplayMonk.zip and build/displaymonk"
+
+# Drag-and-drop install: the app next to a shortcut to /Applications.
+DMG_ROOT="build/dmg"
+mkdir -p "$DMG_ROOT"
+ditto "$APP" "$DMG_ROOT/Display Monk.app"
+ln -s /Applications "$DMG_ROOT/Applications"
+hdiutil create -volname "Display Monk" -srcfolder "$DMG_ROOT" -fs HFS+ -format UDZO -ov build/DisplayMonk.dmg
+rm -rf "$DMG_ROOT"
+echo "Built $APP, build/DisplayMonk.zip, build/DisplayMonk.dmg and build/displaymonk"

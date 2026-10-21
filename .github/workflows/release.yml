@@ -1,6 +1,6 @@
 name: Release
 
-# Builds the universal app and attaches build/DisplayMonk.zip and the displaymonk CLI to a GitHub release.
+# Builds the universal app and attaches DisplayMonk.dmg, DisplayMonk.zip and the displaymonk CLI to a GitHub release.
 # Runs on its own when a release is published; use "Run workflow" to (re)attach the
 # app to an existing release, e.g. v0.1.0.
 
@@ -37,7 +37,8 @@ jobs:
         run: |
           plutil -extract CFBundleShortVersionString raw "build/Display Monk.app/Contents/Info.plist"
           lipo -archs "build/Display Monk.app/Contents/MacOS/DisplayMonk"
+          hdiutil verify build/DisplayMonk.dmg
       - name: Attach to release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "$TAG" build/DisplayMonk.zip build/displaymonk --clobber --repo "$GITHUB_REPOSITORY"
+        run: gh release upload "$TAG" build/DisplayMonk.dmg build/DisplayMonk.zip build/displaymonk --clobber --repo "$GITHUB_REPOSITORY"
