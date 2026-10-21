@@ -6,6 +6,9 @@ resolutions with HiDPI scaling, refresh rate and rotation.
 
 Requires macOS 13 Ventura or later. Works on both Apple Silicon and Intel Macs.
 
+Website: <https://alwinovungal.github.io/Display-Monk/> (source in `site/`, published by the
+**Pages** workflow).
+
 ## Features
 
 | | Menu bar app | CLI |
