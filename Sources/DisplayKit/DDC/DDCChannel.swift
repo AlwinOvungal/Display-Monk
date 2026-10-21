@@ -1,5 +1,7 @@
+import CoreGraphics
 import DisplayMonkCore
 import Foundation
+import IOKit
 
 /// A DDC/CI connection to one display. Calls block for tens of milliseconds and must not run on
 /// the main thread; implementations serialize access internally.
