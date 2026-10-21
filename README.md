@@ -84,10 +84,10 @@ Apple Silicon Macs don't offer sharp HiDPI ("Retina") sizes for most sub-4K moni
 **High Resolution (HiDPI)** for a display and it takes effect **immediately**, with no password
 and no restart. Then pick a size from the **Resolution** dropdown.
 
-The default size matches the UI density of Apple's own displays (about 110 points per inch, like
-the 27" Studio Display's "looks like 2560 × 1440"). On a 27" 2560×1440 or 4K monitor that is
-**2560 × 1440 HiDPI**, which is also what BenQ recommends for its 2K Mac monitors: the same space
-as native, with sharper text. Your last choice is remembered.
+HiDPI starts at **1600 × 900** on 2K (2560×1440) and other 16:9 monitors up to 3200 pixels wide.
+On 4K monitors, where 1600 × 900 would be blurry, it starts at the size matching Apple's own
+displays (about 110 points per inch, e.g. 2560 × 1440 on a 27" 4K). Your last choice is
+remembered and takes precedence.
 
 How it works:
 
