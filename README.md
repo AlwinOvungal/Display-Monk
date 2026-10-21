@@ -6,6 +6,9 @@ resolutions with HiDPI scaling, refresh rate and rotation.
 
 Requires macOS 13 Ventura or later. Works on both Apple Silicon and Intel Macs.
 
+Website: <https://alwinovungal.github.io/Display-Monk/> (source in `site/`, published by the
+**Pages** workflow).
+
 ## Features
 
 | | Menu bar app | CLI |
@@ -24,7 +27,7 @@ Requires macOS 13 Ventura or later. Works on both Apple Silicon and Intel Macs.
 
 ## Install
 
-Download `DisplayMonk.zip` from the latest CI run's artifacts (Actions → Build → DisplayMonk),
+Download `DisplayMonk.zip` from the [latest release](https://github.com/AlwinOvungal/Display-Monk/releases/latest),
 unzip it and move **Display Monk.app** to `/Applications`.
 
 Builds aren't signed with an Apple Developer ID, so macOS blocks the first launch ("Apple could
@@ -35,7 +38,7 @@ not verify…"). Click **Done**, then either:
 
 The app lives in the menu bar (sun icon); it has no Dock icon or window.
 
-The `displaymonk` command-line tool is in the same artifact. Put it somewhere on your `PATH`,
+The `displaymonk` command-line tool is attached to the same release. Put it somewhere on your `PATH`,
 for example `/usr/local/bin`.
 
 ### Build from source
@@ -46,6 +49,12 @@ swift run DisplayMonkApp    # run the menu bar app unbundled
 swift run displaymonk list  # run the CLI
 scripts/bundle.sh           # universal release: build/Display Monk.app and build/displaymonk
 ```
+
+### Releasing
+
+Publish a release on GitHub with a tag like `v0.2.0`. The **Release** workflow builds the universal
+app with that version and attaches `DisplayMonk.zip` and `displaymonk` to it. To rebuild the files
+for an existing release, run the workflow from **Actions → Release → Run workflow** with its tag.
 
 ## Command-line usage
 
