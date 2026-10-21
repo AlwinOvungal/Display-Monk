@@ -26,6 +26,8 @@ jobs:
         run: swift test
       - name: Bundle (release, universal)
         run: scripts/bundle.sh
+      - name: Check the disk image
+        run: hdiutil verify build/DisplayMonk.dmg
       - name: CLI smoke test
         run: |
           build/displaymonk --version
@@ -35,4 +37,5 @@ jobs:
           name: DisplayMonk
           path: |
             build/DisplayMonk.zip
+            build/DisplayMonk.dmg
             build/displaymonk

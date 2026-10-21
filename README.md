@@ -15,6 +15,7 @@ Website: <https://alwinovungal.github.io/Display-Monk/> (source in `site/`, publ
 |---|---|---|
 | Brightness: native (Apple displays), DDC (external monitors) or software (gamma) | ✓ | ✓ (native, DDC) |
 | Combined brightness: backlight first, then software dimming down to black | ✓ | |
+| Sync brightness: one level for every display, changed from any of them | ✓ | |
 | High Resolution (HiDPI) for external displays, instantly, with a resolution dropdown | ✓ | ✓ (`hidpi`) |
 | Display arrangement (left/right/above/below, alignment) and main display | ✓ | |
 | Contrast, speaker volume and mute over DDC | ✓ | ✓ |
@@ -27,8 +28,9 @@ Website: <https://alwinovungal.github.io/Display-Monk/> (source in `site/`, publ
 
 ## Install
 
-Download `DisplayMonk.zip` from the [latest release](https://github.com/AlwinOvungal/Display-Monk/releases/latest),
-unzip it and move **Display Monk.app** to `/Applications`.
+Download `DisplayMonk.dmg` from the [latest release](https://github.com/AlwinOvungal/Display-Monk/releases/latest),
+open it and drag **Display Monk** to **Applications**. The same release has `DisplayMonk.zip` if you
+prefer a zip.
 
 Builds aren't signed with an Apple Developer ID, so macOS blocks the first launch ("Apple could
 not verify…"). Click **Done**, then either:
@@ -53,7 +55,7 @@ scripts/bundle.sh           # universal release: build/Display Monk.app and buil
 ### Releasing
 
 Publish a release on GitHub with a tag like `v0.2.0`. The **Release** workflow builds the universal
-app with that version and attaches `DisplayMonk.zip` and `displaymonk` to it. To rebuild the files
+app with that version and attaches `DisplayMonk.dmg`, `DisplayMonk.zip` and `displaymonk` to it. To rebuild the files
 for an existing release, run the workflow from **Actions → Release → Run workflow** with its tag.
 
 ## Command-line usage
@@ -136,6 +138,32 @@ software once the backlight is at its minimum, all the way to black. The on-scre
 "Min HW" in that range. Software dimming only changes the gamma table, so macOS undoes it when
 Display Monk quits. Turn Combined off in the display's brightness menu (Native/DDC).
 
+## Syncing brightness
+
+With two or more displays connected, the **Sync Brightness** switch at the top of the menu keeps
+them at one brightness level. Move any display's slider, or use the brightness keys, and the others
+follow. A saffron link beside the sliders shows that they're linked.
+
+- **Turning it on** keeps the display under the pointer (where you clicked the menu bar) as it is
+  and sets the others to its level.
+- **Turning it off** changes nothing: every display keeps its current level and is adjusted on its
+  own from then on.
+- **Connecting a display** while sync is on sets it to the level of the displays already connected.
+  At launch, the others match the display under the pointer. Displays that stay connected are never
+  changed behind your back.
+- **Not matched / Match:** brightness changed outside Display Monk (Control Center, auto-brightness,
+  a monitor's own buttons) isn't followed. The menu shows **Not matched** with a **Match** button
+  instead.
+
+Limits:
+
+- Sync matches the slider level, not the light output. Panels and methods (Native, DDC, Software)
+  differ, so the same percentage can look a little different on each screen.
+- Brightness keys over an Apple display are handled by macOS. Display Monk reads the new level
+  back and syncs the other displays, but only while **Brightness keys control external displays**
+  is on, since that's what lets it see the keys.
+- A display on the Software method can only be dimmed below its panel's own brightness.
+
 ## Safety and battery
 
 - **No polling:** the app does nothing while idle. Values are re-read only at launch, after
@@ -214,6 +242,16 @@ Unit tests cover everything that doesn't need a display. With a monitor attached
 10. Position the external display Left of the MacBook with Bottom alignment and check the mouse
     crosses over there; Set as Main moves the menu bar.
 11. Leave the menu closed for a minute: Activity Monitor shows about 0% CPU for Display Monk.
+12. Turn on Sync Brightness with two displays at different levels: the one under the pointer keeps
+    its level and the other matches it. Move display A's slider: B follows. Move B's: A follows.
+    Drag quickly: no flicker, and the monitor's own OSD doesn't flood.
+13. Turn Sync Brightness off: both keep their level. Move A: B doesn't change, and vice versa.
+14. With sync on and the brightness key option on, press the brightness keys over the external
+    display and over the MacBook: the other display follows each time.
+15. With sync on, unplug the external display: the menu shows one display and "Sync is on". Change
+    the MacBook's brightness, then plug the monitor back in: it takes the MacBook's level.
+16. Quit and relaunch with one and with two displays connected: sync stays as it was, and a
+    display with a very long name truncates in the middle without pushing the percentage off.
 
 ## Acknowledgements
 
