@@ -27,11 +27,11 @@ public enum NativeBrightness {
     }
 }
 
-/// Dims a display by scaling its gamma table. macOS restores the original table when the
-/// process that changed it exits, so this only lasts while the app is running.
+/// Dims a display by scaling its gamma table, down to full black. Nothing is sent to the
+/// monitor. macOS restores the original table when the process that changed it exits (or
+/// crashes), so a dimmed screen always comes back when the app quits.
 public enum SoftwareDimmer {
-    /// Never go fully black; a black screen with no visible controls is hard to recover from.
-    public static let minimumLevel = 0.05
+    public static let minimumLevel = 0.0
 
     private struct GammaTable {
         var red: [CGGammaValue]
@@ -54,6 +54,9 @@ public enum SoftwareDimmer {
         lock.lock()
         defer { lock.unlock() }
         let level = min(1, max(minimumLevel, level))
+        // Leave gamma untouched until something is actually dimmed, so other colour tools
+        // (Night Shift, calibration) aren't disturbed for nothing.
+        if level == 1, levels[display] == nil { return true }
         guard let original = originals[display] ?? currentTable(display) else { return false }
         originals[display] = original
         let scale = CGGammaValue(level)

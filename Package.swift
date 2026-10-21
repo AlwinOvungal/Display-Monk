@@ -22,9 +22,14 @@ dependencies += [
     .package(url: "https://github.com/apple/swift-argument-parser", from: "1.5.0"),
 ]
 targets += [
+    // Objective-C declarations of CoreGraphics' private virtual display classes.
+    .target(
+        name: "CGVirtualDisplayBridge",
+        linkerSettings: [.linkedFramework("CoreGraphics")]
+    ),
     .target(
         name: "DisplayKit",
-        dependencies: ["DisplayMonkCore"],
+        dependencies: ["DisplayMonkCore", "CGVirtualDisplayBridge"],
         linkerSettings: [
             .linkedFramework("IOKit"),
             .linkedFramework("CoreGraphics"),

@@ -15,18 +15,26 @@ public final class DisplayManager {
 
     private init() {}
 
-    /// Active (drawable, non-mirrored) displays: built-in first, then left to right.
+    /// Connected physical displays: built-in first, then left to right. Displays mirroring
+    /// another display are left out, except those mirroring a Display Monk HiDPI virtual
+    /// screen, which is itself hidden.
     public func displays() -> [Display] {
         var count: UInt32 = 0
-        guard CGGetActiveDisplayList(0, nil, &count) == .success, count > 0 else { return [] }
+        guard CGGetOnlineDisplayList(0, nil, &count) == .success, count > 0 else { return [] }
         var ids = [CGDirectDisplayID](repeating: 0, count: Int(count))
-        guard CGGetActiveDisplayList(count, &ids, &count) == .success else { return [] }
-        return ids.prefix(Int(count))
-            .filter { CGDisplayMirrorsDisplay($0) == kCGNullDirectDisplay }
-            .map(Display.init(id:))
+        guard CGGetOnlineDisplayList(count, &ids, &count) == .success else { return [] }
+        let online = Array(ids.prefix(Int(count)))
+        let virtualScreens = Set(online.filter { CGDisplayVendorNumber($0) == VirtualMirror.vendorID })
+        return online
+            .compactMap { id -> Display? in
+                guard !virtualScreens.contains(id) else { return nil }
+                let master = CGDisplayMirrorsDisplay(id)
+                if master == kCGNullDirectDisplay { return Display(id: id) }
+                return virtualScreens.contains(master) ? Display(id: id, modeTarget: master) : nil
+            }
             .sorted { a, b in
                 if a.isBuiltIn != b.isBuiltIn { return a.isBuiltIn }
-                return CGDisplayBounds(a.id).minX < CGDisplayBounds(b.id).minX
+                return CGDisplayBounds(a.modeTarget).minX < CGDisplayBounds(b.modeTarget).minX
             }
     }
 

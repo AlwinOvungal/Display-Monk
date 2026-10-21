@@ -12,6 +12,9 @@ final class MediaKeyTap {
     private var tap: CFMachPort?
     private var source: CFRunLoopSource?
     private var hasPrompted = false
+    private var retryDelay: TimeInterval = 3
+    private var retryWindowStart: Date?
+    private var retryScheduled = false
 
     private init() {}
 
@@ -26,10 +29,11 @@ final class MediaKeyTap {
 
     private func start() {
         guard isTrusted() else {
-            // Access is granted in System Settings; check again until it is.
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in self?.update() }
+            scheduleRetry()
             return
         }
+        retryDelay = 3
+        retryWindowStart = nil
         let systemDefined = CGEventMask(1 << 14) // NX_SYSDEFINED
         guard let tap = CGEvent.tapCreate(
             tap: .cgSessionEventTap, place: .headInsertEventTap, options: .defaultTap,
@@ -42,6 +46,25 @@ final class MediaKeyTap {
         source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
+    }
+
+    /// Access is granted in System Settings, so check again a few times with growing gaps,
+    /// then stop until the menu is next opened (which calls `update()`).
+    private func scheduleRetry() {
+        guard !retryScheduled else { return }
+        let windowStart = retryWindowStart ?? Date()
+        retryWindowStart = windowStart
+        guard Date().timeIntervalSince(windowStart) < 300 else {
+            retryWindowStart = nil
+            retryDelay = 3
+            return
+        }
+        retryScheduled = true
+        DispatchQueue.main.asyncAfter(deadline: .now() + retryDelay) { [weak self] in
+            self?.retryScheduled = false
+            self?.update()
+        }
+        retryDelay = min(retryDelay * 2, 30)
     }
 
     private func stop() {
@@ -71,29 +94,29 @@ final class MediaKeyTap {
             guard Preferences.brightnessKeys, state.brightnessMethod != .native else { return false }
             if isDown {
                 state.setBrightness(LevelScale.step(state.brightness, up: key == .brightnessUp, fine: fine))
-                showOSD(icon: "sun.max.fill", level: state.brightness, on: state)
+                showOSD(.brightness, detail: state.brightnessDetail, level: state.brightness, on: state)
             }
             return true
         case .volumeUp, .volumeDown:
             guard Preferences.volumeKeys, let volume = state.volume else { return false }
             if isDown {
                 state.setVolume(LevelScale.step(volume, up: key == .volumeUp, fine: fine))
-                showOSD(icon: "speaker.wave.2.fill", level: state.volume ?? 0, on: state)
+                showOSD(.volume, detail: state.volumeDetail, level: state.volume ?? 0, on: state)
             }
             return true
         case .mute:
             guard Preferences.volumeKeys, state.volume != nil else { return false }
             if isDown {
                 state.setMuted(!state.muted)
-                showOSD(icon: state.muted ? "speaker.slash.fill" : "speaker.wave.2.fill", level: state.muted ? 0 : state.volume ?? 0, on: state)
+                showOSD(state.muted ? .muted : .volume, detail: state.volumeDetail, level: state.volume ?? 0, on: state)
             }
             return true
         }
     }
 
-    private func showOSD(icon: String, level: Double, on state: DisplayState) {
+    private func showOSD(_ kind: OSD.Kind, detail: String, level: Double, on state: DisplayState) {
         guard Preferences.showOSD else { return }
-        OSD.shared.show(icon: icon, level: level, on: state.display.screen)
+        OSD.shared.show(kind, title: state.display.name, detail: detail, level: level, on: state.display.screen)
     }
 }
 

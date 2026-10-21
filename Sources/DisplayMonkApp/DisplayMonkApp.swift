@@ -25,12 +25,31 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_: Notification) {
         DisplayStore.shared.reload()
+        DisplayStore.shared.restoreVirtualHiDPI()
         DisplayManager.shared.observeChanges { DisplayStore.shared.reload() }
         MediaKeyTap.shared.update()
+        observeSleep()
     }
 
     func applicationWillTerminate(_: Notification) {
+        VirtualMirror.disableAll()
         SoftwareDimmer.restoreAll()
+    }
+
+    /// No DDC while displays sleep, and none for 2 seconds after they wake: some monitors
+    /// hang if they get commands while powering up. Gamma dimming is re-applied on wake.
+    private func observeSleep() {
+        let center = NSWorkspace.shared.notificationCenter
+        _ = center.addObserver(forName: NSWorkspace.screensDidSleepNotification, object: nil, queue: .main) { _ in
+            DDCGate.shared.isPaused = true
+        }
+        _ = center.addObserver(forName: NSWorkspace.screensDidWakeNotification, object: nil, queue: .main) { _ in
+            DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                DDCGate.shared.isPaused = false
+                SoftwareDimmer.reapply()
+                DisplayStore.shared.resumeWrites()
+            }
+        }
     }
 }
 

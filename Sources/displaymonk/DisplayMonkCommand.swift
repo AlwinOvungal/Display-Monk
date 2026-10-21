@@ -15,7 +15,7 @@ struct DisplayMonkCommand: ParsableCommand {
         version: "0.1.0",
         subcommands: [
             List.self, Brightness.self, Contrast.self, Volume.self, Mute.self, Input.self,
-            GetVCP.self, SetVCP.self, Modes.self, SetMode.self, Rotate.self,
+            GetVCP.self, SetVCP.self, Modes.self, SetMode.self, Rotate.self, HiDPI.self,
         ]
     )
 }
@@ -46,7 +46,11 @@ struct DisplayOption: ParsableArguments {
     }
 
     func mainController() throws -> DisplayController {
-        try controller { $0.display.isMain }
+        if display == nil, !DisplayManager.shared.controllers().contains(where: { $0.display.isMain }) {
+            // The main desktop is a HiDPI virtual screen; its physical display is the first one.
+            return try controller { _ in true }
+        }
+        return try controller { $0.display.isMain }
     }
 
     func ddcController() throws -> DisplayController {
@@ -282,17 +286,31 @@ struct GetVCP: ParsableCommand {
 }
 
 struct SetVCP: ParsableCommand {
-    static let configuration = CommandConfiguration(commandName: "set", abstract: "Write a raw value to any VCP code, e.g. `set 0x60 17`.")
+    static let configuration = CommandConfiguration(
+        commandName: "set",
+        abstract: "Write a raw value to a VCP code, e.g. `set contrast 70` or `set 0x60 17`.",
+        discussion: """
+        Only the everyday controls are allowed by default: brightness, contrast, volume, mute and \
+        input. Other codes (factory reset, power, colour gains, vendor codes) can change or reset \
+        settings stored in the monitor; pass --force only if you know what the code does.
+        """
+    )
 
     @OptionGroup var target: DisplayOption
     @Argument var code: String
     @Argument var value: UInt16
+    @Flag(help: "Allow codes other than brightness, contrast, volume, mute and input.") var force = false
 
     func run() throws {
         guard let vcp = VCPCode(argument: code) else { throw CLIError("unknown VCP code \"\(code)\"") }
+        guard vcp.isUserControl || force else {
+            throw CLIError("\(vcp) is not an everyday control; refusing without --force")
+        }
         let controller = try target.ddcController()
-        guard controller.write(vcp, value: value) else { throw CLIError("write to \(vcp) failed") }
-        print("\(controller.display.name): \(vcp) = \(value)")
+        // Never send more than the monitor says it supports.
+        let clamped = vcp.isContinuous ? min(value, controller.maximum(for: vcp)) : value
+        guard controller.write(vcp, value: clamped) else { throw CLIError("write to \(vcp) failed") }
+        print("\(controller.display.name): \(vcp) = \(clamped)")
     }
 }
 
@@ -350,5 +368,69 @@ struct Rotate: ParsableCommand {
         let controller = try target.mainController()
         try DisplayRotation.set(degrees, for: controller.display.id, wait: 10)
         print("\(controller.display.name): rotated to \(degrees)°")
+    }
+}
+
+// MARK: - HiDPI
+
+struct HiDPI: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "hidpi",
+        abstract: "Show, add or remove HiDPI resolutions for an external display.",
+        discussion: """
+        enable and disable change macOS's display configuration and need sudo; they take effect \
+        after a restart. Only scaled desktop sizes are added: the signal sent to the monitor is \
+        unchanged. The app can also use a virtual screen instead, which needs no restart.
+        """
+    )
+
+    enum Action: String, ExpressibleByArgument {
+        case status, enable, disable
+    }
+
+    @OptionGroup var target: DisplayOption
+    @Argument var action: Action = .status
+
+    func run() throws {
+        let controller = try target.controller { !$0.display.isBuiltIn }
+        let display = controller.display
+        guard !display.isBuiltIn else { throw CLIError("built-in displays already use HiDPI") }
+        switch action {
+        case .status:
+            let status = OverrideInstaller.status(for: display)
+            print("\(display.name)")
+            print("  native resolution: \(OverrideInstaller.nativeSize(for: display)?.description ?? "unknown")")
+            print("  configuration:     \(describe(status)) (\(OverrideInstaller.path(for: display)))")
+            print("  HiDPI sizes:       \(OverrideInstaller.hasExtendedHiDPIModes(for: display) ? "available" : "not available")")
+            if display.isVirtualHiDPI { print("  virtual screen:    on (from the Display Monk app)") }
+            if status == .installed, !OverrideInstaller.hasExtendedHiDPIModes(for: display) {
+                print("  Restart your Mac to load the new resolutions.")
+            }
+        case .enable:
+            try requireRoot()
+            try OverrideInstaller.install(for: display)
+            let sizes = OverrideInstaller.presetSizes(for: display)
+            print("\(display.name): added \(sizes.count) HiDPI sizes (\(sizes.first?.description ?? "") to \(sizes.last?.description ?? "")).")
+            print("Restart your Mac to use them.")
+        case .disable:
+            try requireRoot()
+            guard OverrideInstaller.status(for: display) == .installed else {
+                throw CLIError("no Display Monk configuration to remove for \(display.name)")
+            }
+            try OverrideInstaller.remove(for: display)
+            print("\(display.name): HiDPI configuration removed. Restart your Mac to finish.")
+        }
+    }
+
+    private func requireRoot() throws {
+        guard geteuid() == 0 else { throw CLIError("this changes macOS's display configuration; run it with sudo") }
+    }
+
+    private func describe(_ status: OverrideStatus) -> String {
+        switch status {
+        case .notInstalled: "none"
+        case .installed: "installed by Display Monk"
+        case .foreign: "from another app"
+        }
     }
 }
