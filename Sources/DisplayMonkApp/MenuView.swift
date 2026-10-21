@@ -1,3 +1,4 @@
+import AppKit
 import ApplicationServices
 import DisplayKit
 import DisplayMonkCore
@@ -18,6 +19,10 @@ struct MenuView: View {
             }
             ForEach(store.displays) { state in
                 DisplaySection(state: state, store: store)
+            }
+            if store.displays.count > 1 {
+                ArrangementSection(store: store)
+                Divider()
             }
             VStack(alignment: .leading, spacing: 6) {
                 Toggle("Brightness keys control external displays", isOn: keyBinding($brightnessKeys))
@@ -42,11 +47,12 @@ struct MenuView: View {
             }
             .padding(.horizontal, 4)
         }
-        .padding(12)
+        .padding(14)
         .frame(width: 340)
-        .onAppear {
-            store.refreshIfStale()
-            MediaKeyTap.shared.update()
+        .background(VisualEffectBackground())
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.primary.opacity(0.12)))
+        .onReceive(NotificationCenter.default.publisher(for: .menuWillShow)) { _ in
             accessibilityTrusted = AXIsProcessTrusted()
         }
     }
@@ -119,9 +125,6 @@ struct DisplaySection: View {
                 if !state.display.isBuiltIn {
                     hiDPIToggle
                 }
-                if store.displays.count > 1 {
-                    arrangement
-                }
                 controls
             }
             .padding(.horizontal, 4)
@@ -180,6 +183,8 @@ struct DisplaySection: View {
                     } else {
                         Button("Make HiDPI Permanent…") { DispatchQueue.main.async { HiDPIFlow.makePermanent(state) } }
                     }
+                    Divider()
+                    Button("Reset Display to Native Resolution") { DispatchQueue.main.async { state.resetDisplay() } }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                 }
@@ -191,52 +196,6 @@ struct DisplaySection: View {
             if let status = state.hiDPIStatusText {
                 Text(status).font(.caption).foregroundStyle(.secondary)
             }
-        }
-    }
-
-    /// Position dropdowns relative to the MacBook (or main display), and "Set as Main".
-    @ViewBuilder private var arrangement: some View {
-        let reference = store.arrangementReference(for: state)
-        HStack(spacing: 8) {
-            Image(systemName: "rectangle.on.rectangle").frame(width: 20)
-            if !state.display.isBuiltIn, let reference {
-                let current = state.placement(relativeTo: reference)
-                let side = current?.0 ?? Arrangement.nearestPlacement(of: state.frame, relativeTo: reference.frame)
-                let name = reference.display.isBuiltIn ? "MacBook" : reference.display.name
-                Menu(current.map { positionLabel($0.0, name) } ?? "Custom position") {
-                    ForEach(Placement.allCases, id: \.self) { placement in
-                        Toggle(positionLabel(placement, name), isOn: Binding(
-                            get: { current?.0 == placement },
-                            set: { if $0 { state.move(placement, current?.1 ?? .center, relativeTo: reference) } }
-                        ))
-                    }
-                }
-                .fixedSize()
-                Menu(current.map { $0.1.label(for: $0.0) } ?? "Align") {
-                    ForEach(PlacementAlignment.allCases, id: \.self) { alignment in
-                        Toggle(alignment.label(for: side), isOn: Binding(
-                            get: { current?.1 == alignment },
-                            set: { if $0 { state.move(side, alignment, relativeTo: reference) } }
-                        ))
-                    }
-                }
-                .fixedSize()
-            }
-            Spacer(minLength: 0)
-            if !state.display.isMain {
-                Button("Set as Main") { state.makeMain(among: store.displays) }
-                    .help("Moves the menu bar and Dock to this display")
-            }
-        }
-        .controlSize(.small)
-    }
-
-    private func positionLabel(_ placement: Placement, _ reference: String) -> String {
-        switch placement {
-        case .left: "Left of \(reference)"
-        case .right: "Right of \(reference)"
-        case .above: "Above \(reference)"
-        case .below: "Below \(reference)"
         }
     }
 
@@ -376,4 +335,18 @@ struct ResolutionMenu: View {
         guard let current = state.currentMode else { return false }
         return current.width == mode.width && current.height == mode.height && current.isHiDPI == mode.isHiDPI
     }
+}
+
+/// A translucent, blurred background (more see-through than the standard popover) for the
+/// rounded menu panel.
+struct VisualEffectBackground: NSViewRepresentable {
+    func makeNSView(context _: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .hudWindow
+        view.blendingMode = .behindWindow
+        view.state = .active
+        return view
+    }
+
+    func updateNSView(_: NSVisualEffectView, context _: Context) {}
 }

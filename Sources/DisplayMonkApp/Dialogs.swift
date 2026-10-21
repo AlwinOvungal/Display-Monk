@@ -7,6 +7,7 @@ enum Alerts {
         let alert = NSAlert()
         alert.messageText = title
         alert.informativeText = message
+        StatusItemController.shared.close()
         NSApp.activate(ignoringOtherApps: true)
         _ = alert.runModal()
     }
@@ -18,6 +19,7 @@ enum Alerts {
         alert.informativeText = message
         alert.addButton(withTitle: confirm)
         alert.addButton(withTitle: cancel)
+        StatusItemController.shared.close()
         NSApp.activate(ignoringOtherApps: true)
         return alert.runModal() == .alertFirstButtonReturn
     }
@@ -36,6 +38,7 @@ enum ChangeConfirmation {
         let timer = Timer(timeInterval: 1, target: countdown, selector: #selector(Countdown.tick(_:)), userInfo: nil, repeats: true)
         // The modal session runs the main run loop in modal-panel mode.
         RunLoop.main.add(timer, forMode: .modalPanel)
+        StatusItemController.shared.close()
         NSApp.activate(ignoringOtherApps: true)
         let response = alert.runModal()
         timer.invalidate()

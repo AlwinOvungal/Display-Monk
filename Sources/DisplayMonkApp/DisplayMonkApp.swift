@@ -6,15 +6,11 @@ import SwiftUI
 @main
 struct DisplayMonkApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
-    @StateObject private var store = DisplayStore.shared
 
+    // The menu bar item and its panel are managed by StatusItemController; the app has no
+    // windows of its own.
     var body: some Scene {
-        MenuBarExtra {
-            MenuView(store: store)
-        } label: {
-            Image(nsImage: MenuBarIcon.image)
-        }
-        .menuBarExtraStyle(.window)
+        Settings { EmptyView() }
     }
 }
 
@@ -23,11 +19,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         // Menu bar only, even when run unbundled with `swift run`.
         NSApp.setActivationPolicy(.accessory)
         Preferences.registerDefaults()
+        Preferences.migrate()
     }
 
     func applicationDidFinishLaunching(_: Notification) {
+        StatusItemController.shared.install()
         DisplayStore.shared.reload()
-        DisplayStore.shared.restoreVirtualHiDPI()
         DisplayManager.shared.observeChanges { DisplayStore.shared.reload() }
         MediaKeyTap.shared.update()
         observeSleep()
@@ -35,6 +32,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationWillTerminate(_: Notification) {
         VirtualMirror.disableAll()
+        DisplayStore.shared.clearHiDPIRestoreFlags()
         SoftwareDimmer.restoreAll()
     }
 

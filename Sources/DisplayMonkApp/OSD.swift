@@ -1,8 +1,9 @@
 import AppKit
 import SwiftUI
 
-/// The brightness/volume HUD: a dark pill at the top of the target screen with the display
-/// name, a value badge and a level bar with step marks.
+/// The brightness/volume HUD, styled and placed like macOS's own: a compact dark panel at the
+/// top right of the target screen, under the menu bar, with the display name, the value and a
+/// level bar with step marks.
 final class OSD {
     static let shared = OSD()
 
@@ -40,6 +41,9 @@ final class OSD {
     /// Bumped on every show so a fade that is already running doesn't hide a newer HUD.
     private var generation = 0
 
+    private static let width: CGFloat = 300
+    private static let margin: CGFloat = 12
+
     private init() {}
 
     func show(_ kind: Kind, title: String, detail: String, level: Double, on screen: NSScreen?) {
@@ -50,11 +54,11 @@ final class OSD {
         model.level = level
         generation += 1
 
-        let size = panel.contentView?.fittingSize ?? NSSize(width: 440, height: 96)
+        let size = panel.contentView?.fittingSize ?? NSSize(width: Self.width, height: 64)
         let menuBarHeight = screen.frame.maxY - screen.visibleFrame.maxY
         panel.setFrame(NSRect(
-            x: screen.frame.midX - size.width / 2,
-            y: screen.frame.maxY - menuBarHeight - 14 - size.height,
+            x: screen.frame.maxX - Self.margin - size.width,
+            y: screen.frame.maxY - menuBarHeight - 8 - size.height,
             width: size.width,
             height: size.height
         ), display: true)
@@ -77,7 +81,7 @@ final class OSD {
     }
 
     private func makePanel() -> NSPanel {
-        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: 440, height: 96), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        let panel = NSPanel(contentRect: NSRect(x: 0, y: 0, width: Self.width, height: 64), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         panel.isOpaque = false
         panel.backgroundColor = .clear
         panel.hasShadow = true
@@ -92,61 +96,59 @@ final class OSD {
         @ObservedObject var model: Model
 
         var body: some View {
-            VStack(alignment: .leading, spacing: 12) {
-                HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(alignment: .firstTextBaseline) {
                     Text(model.title)
-                        .font(.system(size: 17, weight: .semibold))
+                        .font(.system(size: 13, weight: .semibold))
                         .lineLimit(1)
+                    Spacer(minLength: 8)
                     Text(model.detail)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(.system(size: 11, weight: .medium))
                         .monospacedDigit()
-                        .foregroundStyle(.black.opacity(0.75))
-                        .padding(.horizontal, 10)
-                        .padding(.vertical, 4)
-                        .background(Capsule().fill(.white.opacity(0.9)))
+                        .foregroundStyle(.white.opacity(0.6))
                 }
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     Image(systemName: model.kind.minIcon)
-                        .font(.system(size: 15, weight: .medium))
-                        .frame(width: 22)
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 14)
                     LevelBar(level: model.kind == .muted ? 0 : model.level)
                     Image(systemName: model.kind.maxIcon)
-                        .font(.system(size: 20, weight: .medium))
-                        .frame(width: 26)
+                        .font(.system(size: 13, weight: .semibold))
+                        .frame(width: 18)
                 }
             }
             .foregroundStyle(.white)
-            .padding(.horizontal, 22)
-            .padding(.vertical, 16)
-            .frame(width: 440)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 26, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 26, style: .continuous).strokeBorder(.white.opacity(0.12)))
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
+            .frame(width: OSD.width)
+            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 20, style: .continuous).strokeBorder(.white.opacity(0.1)))
             .environment(\.colorScheme, .dark)
         }
     }
 
-    /// A rounded track with the filled level and 16 step marks beneath it.
+    /// A thin track with the filled level and 16 step marks beneath it.
     private struct LevelBar: View {
         let level: Double
         private let steps = 16
 
         var body: some View {
-            VStack(spacing: 6) {
+            VStack(spacing: 4) {
                 GeometryReader { geometry in
                     ZStack(alignment: .leading) {
-                        Capsule().fill(.white.opacity(0.18))
-                        Capsule().fill(.white).frame(width: max(6, geometry.size.width * min(1, max(0, level))))
+                        Capsule().fill(.white.opacity(0.2))
+                        Capsule().fill(.white).frame(width: max(4, geometry.size.width * min(1, max(0, level))))
                     }
                 }
-                .frame(height: 6)
+                .frame(height: 4)
                 HStack(spacing: 0) {
                     ForEach(0 ... steps, id: \.self) { step in
-                        Circle().fill(.white.opacity(0.35)).frame(width: 3, height: 3)
+                        Circle().fill(.white.opacity(0.3)).frame(width: 2, height: 2)
                         if step < steps { Spacer(minLength: 0) }
                     }
                 }
             }
-            .padding(.top, 9)
+            .padding(.top, 6)
         }
     }
 }

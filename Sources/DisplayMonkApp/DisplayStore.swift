@@ -16,9 +16,11 @@ final class DisplayStore: ObservableObject {
 
     func reload() {
         SoftwareDimmer.reapply()
+        VirtualMirror.pruneDisconnected()
         displays = DisplayManager.shared.controllers().map(DisplayState.init)
         displays.forEach { $0.refresh() }
         lastRefresh = Date()
+        applyHiDPIPreferences()
     }
 
     /// Re-reads values when the menu opens, at most every 10 seconds. There is no background
@@ -29,17 +31,38 @@ final class DisplayStore: ObservableObject {
         lastRefresh = Date()
     }
 
-    /// Brings back HiDPI that was on when the app last quit. Where a permanent configuration
-    /// has taken effect since (after a restart), the same size is selected natively instead
-    /// of re-creating the virtual screen.
-    func restoreVirtualHiDPI() {
-        for state in displays where Settings.bool(.virtualHiDPI, for: state.display) && !state.display.isVirtualHiDPI {
-            if state.hasExtendedHiDPI {
-                Settings.set(false, .virtualHiDPI, for: state.display)
-                state.applyNativeHiDPI()
-            } else {
-                state.enableVirtualHiDPI()
+    /// Displays already handled this session, so reconfigurations don't re-apply HiDPI.
+    private var hiDPIHandled = Set<String>()
+
+    /// HiDPI is on by default for external displays. Applied at launch and when a display is
+    /// connected; turning the switch off is remembered per display.
+    func applyHiDPIPreferences() {
+        // Forget displays that were disconnected, so they get HiDPI again when reconnected.
+        hiDPIHandled.formIntersection(displays.map(\.display.persistentKey))
+        for state in displays where !state.display.isBuiltIn && !hiDPIHandled.contains(state.display.persistentKey) {
+            hiDPIHandled.insert(state.display.persistentKey)
+            let display = state.display
+            // A virtual screen was active when the app last stopped without cleaning up (a
+            // crash): put the display back to native first.
+            if Settings.bool(.hiDPIRestorePending, for: display), !display.isVirtualHiDPI {
+                VirtualMirror.reset(display.id)
+                Settings.set(false, .hiDPIRestorePending, for: display)
             }
+            guard Settings.bool(.hiDPIEnabled, for: display, default: true), !state.isHiDPIOn else { continue }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                self?.state(for: display.id)?.enableHiDPI()
+            }
+        }
+    }
+
+    func state(for id: CGDirectDisplayID) -> DisplayState? {
+        displays.first { $0.id == id }
+    }
+
+    /// Called when quitting, after virtual screens were removed cleanly.
+    func clearHiDPIRestoreFlags() {
+        for state in displays {
+            Settings.set(false, .hiDPIRestorePending, for: state.display)
         }
     }
 
@@ -384,6 +407,8 @@ final class DisplayState: ObservableObject, Identifiable {
     /// Turns HiDPI on right away: natively when macOS already offers the HiDPI sizes (a
     /// permanent configuration is active), otherwise with a virtual screen. Never needs a restart.
     func enableHiDPI() {
+        guard !VirtualMirror.isBusy(id) else { return }
+        Settings.set(true, .hiDPIEnabled, for: display)
         if hasExtendedHiDPI {
             applyNativeHiDPI()
         } else {
@@ -391,14 +416,36 @@ final class DisplayState: ObservableObject, Identifiable {
         }
     }
 
-    /// Turns HiDPI off right away: removes the virtual screen, or switches to the native
-    /// unscaled resolution.
+    /// Turns HiDPI off right away and remembers that: removes the virtual screen, or switches
+    /// to the native unscaled resolution.
     func disableHiDPI() {
+        guard !VirtualMirror.isBusy(id) else { return }
+        Settings.set(false, .hiDPIEnabled, for: display)
         if display.isVirtualHiDPI {
             disableVirtualHiDPI()
         } else if let native = nativeLoDPIChoice {
             apply(native)
         }
+    }
+
+    /// Escape hatch: no virtual screen, no mirroring, native unscaled resolution, HiDPI off.
+    func resetDisplay() {
+        Settings.set(false, .hiDPIEnabled, for: display)
+        Settings.set(false, .hiDPIRestorePending, for: display)
+        isWorking = true
+        let displayID = id
+        VirtualMirror.reset(displayID)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+            DisplayStore.shared.state(for: displayID)?.transitionFinished()
+        }
+    }
+
+    /// Clears the busy state on whichever object represents this display now; the display
+    /// list is usually rebuilt during a transition.
+    func transitionFinished() {
+        isWorking = false
+        refreshModes()
+        refreshHiDPI()
     }
 
     /// Selects the preferred HiDPI size, or the closest one macOS offers.
@@ -409,25 +456,27 @@ final class DisplayState: ObservableObject, Identifiable {
     }
 
     func enableVirtualHiDPI() {
+        let display = self.display
         let sizes = OverrideInstaller.presetSizes(for: display)
         let initial = preferredHiDPISize
         isWorking = true
-        VirtualMirror.enable(for: display, sizes: sizes, initialSize: initial) { [weak self] result in
-            guard let self else { return }
-            isWorking = false
-            switch result {
-            case .success:
-                Settings.set(true, .virtualHiDPI, for: display)
-            case let .failure(error):
-                Settings.set(false, .virtualHiDPI, for: display)
+        Settings.set(true, .hiDPIRestorePending, for: display)
+        VirtualMirror.enable(for: display, sizes: sizes, initialSize: initial) { result in
+            if case let .failure(error) = result {
+                Settings.set(false, .hiDPIRestorePending, for: display)
                 Alerts.show("Could not create the HiDPI virtual screen", error.localizedDescription)
             }
+            DisplayStore.shared.state(for: display.id)?.transitionFinished()
         }
     }
 
     func disableVirtualHiDPI() {
-        VirtualMirror.disable(for: id)
-        Settings.set(false, .virtualHiDPI, for: display)
+        let display = self.display
+        isWorking = true
+        VirtualMirror.disable(for: display.id) {
+            Settings.set(false, .hiDPIRestorePending, for: display)
+            DisplayStore.shared.state(for: display.id)?.transitionFinished()
+        }
     }
 
     // MARK: Arrangement
@@ -516,7 +565,8 @@ enum Settings {
         case brightness
         case brightnessMethod
         case combined
-        case virtualHiDPI
+        case hiDPIEnabled
+        case hiDPIRestorePending
         case hiDPISize
     }
 
@@ -555,6 +605,18 @@ enum Preferences {
     static let brightnessKeysKey = "brightnessKeysControlExternalDisplays"
     static let volumeKeysKey = "volumeKeysControlDisplaySpeakers"
     static let showOSDKey = "showOSD"
+
+    /// One-time clean-ups of settings written by earlier versions.
+    static func migrate() {
+        let defaults = UserDefaults.standard
+        guard defaults.integer(forKey: "settingsVersion") < 2 else { return }
+        // HiDPI sizes picked while testing earlier builds would override the 1600x900 default.
+        for key in defaults.dictionaryRepresentation().keys
+            where key.hasPrefix("display.") && (key.hasSuffix(".hiDPISize") || key.hasSuffix(".virtualHiDPI")) {
+            defaults.removeObject(forKey: key)
+        }
+        defaults.set(2, forKey: "settingsVersion")
+    }
 
     static func registerDefaults() {
         UserDefaults.standard.register(defaults: [brightnessKeysKey: false, volumeKeysKey: false, showOSDKey: true])

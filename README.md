@@ -66,6 +66,7 @@ displaymonk rotate 90
 displaymonk hidpi                    # HiDPI status of the first external display
 sudo displaymonk hidpi enable        # add HiDPI resolutions (restart to use them)
 sudo displaymonk hidpi disable
+displaymonk reset -d external        # back to the native resolution if a display got stuck
 ```
 
 `set` only writes the everyday controls (brightness, contrast, volume, mute, input) unless you
@@ -80,44 +81,44 @@ tables when it exits), so it is only offered in the app.
 
 ## HiDPI on external displays
 
-Apple Silicon Macs don't offer sharp HiDPI ("Retina") sizes for most sub-4K monitors. Turn on
-**High Resolution (HiDPI)** for a display and it takes effect **immediately**, with no password
-and no restart. Then pick a size from the **Resolution** dropdown.
-
-HiDPI starts at **1600 × 900** on 2K (2560×1440) and other 16:9 monitors up to 3200 pixels wide.
-On 4K monitors, where 1600 × 900 would be blurry, it starts at the size matching Apple's own
-displays (about 110 points per inch, e.g. 2560 × 1440 on a 27" 4K). Your last choice is
-remembered and takes precedence.
+Apple Silicon Macs don't offer sharp HiDPI ("Retina") sizes for most sub-4K monitors. Display
+Monk turns **High Resolution (HiDPI)** on automatically for external displays, at **1600 × 900**
+on 2K (2560×1440) monitors. On 4K monitors, where 1600 × 900 would be blurry, it uses the size
+matching Apple's own displays (e.g. 2560 × 1440 on a 27"). Pick another size from the
+**Resolution** dropdown and it is remembered. Turn the switch off for a display and that is
+remembered too.
 
 How it works:
 
-- **Right away:** a HiDPI virtual screen renders the desktop and your display mirrors it. This
-  works on every Mac, including M4/M5, but only while Display Monk is running.
+- **Right away:** a HiDPI virtual screen renders the desktop and your display mirrors it. The
+  display stays at its native resolution and in the same place in the arrangement. This works
+  on every Mac, including M4/M5, while Display Monk is running. Turning HiDPI off removes the
+  virtual screen and puts the display back at its native resolution.
 - **Optionally permanent:** the **…** menu next to the switch has **Make HiDPI Permanent…**. It
   adds the HiDPI sizes to macOS's own configuration for that display model (in
   `/Library/Displays/Contents/Resources/Overrides/`) and needs your administrator password. You
-  never have to restart for it: after your next normal restart, Display Monk switches from the
-  virtual screen to native HiDPI when it starts, and from then on HiDPI works without the app.
-  If another app (for example BetterDisplay) already configured the display, its settings are
-  kept and a backup is restored when you remove permanent HiDPI.
+  never have to restart for it: after your next normal restart, Display Monk uses native HiDPI
+  instead of the virtual screen, and from then on HiDPI works without the app. If another app
+  (for example BetterDisplay) already configured the display, its settings are kept and a
+  backup is restored when you remove permanent HiDPI.
 
 Both only change how the desktop is rendered and scaled. The monitor keeps getting its normal
-native signal and refresh rate, and no EDID is overridden. The display is never switched off or
-reconnected. HiDPI renders twice the pixels, so it uses somewhat more graphics power (as Apple's
-own Retina modes do).
+native signal and refresh rate, and no EDID is overridden. HiDPI renders twice the pixels, so
+it uses somewhat more graphics power (as Apple's own Retina modes do).
 
-To undo it, turn the switch off. To remove the permanent configuration, use **…** → **Remove
-Permanent HiDPI…** (or `sudo displaymonk hidpi disable`); its sizes disappear after the next
-restart. If you ever need to recover by hand, delete the display's file under
-`/Library/Displays/Contents/Resources/Overrides/` and restart.
+**If a display ever gets stuck at a wrong resolution:** use **…** → **Reset Display to Native
+Resolution**, quit Display Monk (which removes its virtual screens and restores native
+resolution), or run `displaymonk reset -d external`. To remove the permanent configuration by
+hand, delete the display's file under `/Library/Displays/Contents/Resources/Overrides/` and
+restart.
 
 ## Arranging displays
 
-With more than one display connected, each external display has a **Position** dropdown
-(Left of / Right of / Above / Below the MacBook) and an **Align** dropdown (Top / Center / Bottom,
-or Left / Center / Right). **Set as Main** moves the menu bar and Dock to that display. Only the
-desktop layout changes. Positions dragged in System Settings that don't match a preset show
-as "Custom position".
+With more than one display connected, the menu shows a live, to-scale **Arrangement** preview.
+Click a display to select it, then use the arrow buttons to place it left of, above, right of or
+below the MacBook, and the alignment buttons to line up its top, centre or bottom (or left,
+centre, right). **Set as Main** moves the menu bar and Dock to that display. Only the desktop
+layout changes.
 
 ## Brightness down to black
 
