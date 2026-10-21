@@ -174,7 +174,13 @@ Sources/DisplayKit        macOS display access: DDC transports, brightness, mode
 Sources/DisplayMonkApp    SwiftUI menu bar app
 Sources/displaymonk       CLI (swift-argument-parser)
 Tests/DisplayMonkCoreTests
+Resources                 Info.plist, AppIcon.svg/.icns, MenuBarIcon.svg
+scripts                   bundle.sh (builds the .app), make-icons.py (regenerates AppIcon.icns)
 ```
+
+The menu bar icon is drawn in code from the paths in `Resources/MenuBarIcon.svg`
+(`Sources/DisplayMonkApp/MenuBarIcon.swift`). After editing `Resources/AppIcon.svg`, run
+`pip install cairosvg pillow && python3 scripts/make-icons.py` to rebuild `AppIcon.icns`.
 
 ## Testing on real hardware
 
