@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Display Monk</title>
-<meta name="description" content="Display Monk is a calm macOS menu bar app for brightness, resolution, arrangement and display modes on every screen you own.">
+<meta name="description" content="Display Monk is a free, open-source macOS menu bar app for brightness (synced across screens if you like), HiDPI, arrangement and monitor controls.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="Display Monk">
-<meta property="og:description" content="Calm control for your displays. A free, open-source macOS menu bar app for brightness, HiDPI, arrangement and monitor controls.">
+<meta property="og:description" content="Calm control for your displays. A free, open-source macOS menu bar app for brightness (synced across screens if you like), HiDPI, arrangement and monitor controls.">
 <meta property="og:url" content="https://alwinovungal.github.io/Display-Monk/">
 <meta property="og:image" content="https://alwinovungal.github.io/Display-Monk/assets/icon-dark.png">
 <meta name="twitter:card" content="summary">
@@ -144,47 +144,71 @@ p { margin: 0; }
 @media (max-width: 480px) { .menubar .apple span:not(:first-child), .mb-hide { display: none; } }
 
 .menu {
-  margin: 8px 10px 0 auto; width: min(320px, calc(100% - 20px));
+  margin: 8px 10px 0 auto; width: min(330px, calc(100% - 20px));
   background: var(--menu-bg); color: var(--menu-fg);
   backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border-radius: 14px; padding: 6px; font-size: 14px;
+  border-radius: 14px; padding: 14px; font-size: 13px; line-height: 1.35;
+  display: grid; gap: 12px;
   box-shadow: 0 18px 40px -12px rgba(20,24,40,.45), 0 0 0 .5px rgba(0,0,0,.12);
   transform-origin: 85% 0; transition: transform .18s ease, opacity .18s ease;
 }
-.menu[hidden] { display: block !important; opacity: 0; transform: scale(.96) translateY(-4px); pointer-events: none; visibility: hidden; }
-.menu-head { display: flex; align-items: center; gap: 10px; padding: 8px 10px 10px; border-bottom: 1px solid var(--menu-sep); margin-bottom: 4px; }
-.menu-head img { width: 26px; }
-.menu-head strong { font: 700 15px var(--body); flex: 1; }
-.menu-head svg { width: 18px; height: 18px; opacity: .7; }
-.mi { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px; cursor: pointer; }
-.mi:hover, .mi:focus-visible { background: var(--menu-hover); }
-.mi:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-.mi > svg:first-child { width: 20px; height: 20px; flex: none; }
-.mi span { flex: 1; }
-.mi .chev { width: 14px; height: 14px; opacity: .55; transition: transform .2s ease; }
-.mi[aria-expanded="true"] .chev { transform: rotate(90deg); }
-.mi kbd { font: 500 12px var(--body); opacity: .55; }
-.menu hr { border: 0; border-top: 1px solid var(--menu-sep); margin: 4px 8px; }
-.sub { padding: 2px 10px 10px 42px; display: grid; gap: 10px; font-size: 13px; }
-.sub[hidden] { display: none; }
-.spec { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 12.5px; }
+.menu[hidden] { display: grid !important; opacity: 0; transform: scale(.96) translateY(-4px); pointer-events: none; visibility: hidden; }
+.pm-head { display: flex; align-items: center; gap: 10px; }
+.pm-head img { width: 30px; height: 30px; border-radius: 7px; }
+.pm-head strong { display: block; font: 600 13px var(--body); }
+.pm-status { display: flex; align-items: center; gap: 5px; font-size: 11.5px; opacity: .65; }
+.dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.ok { background: #2fb35a; }
+.dot.sync { background: var(--saffron); }
+.pm-panel { background: rgba(28,36,56,.05); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+.pm-title { display: flex; align-items: center; gap: 6px; }
+.pm-title > svg { width: 15px; height: 15px; color: var(--saffron); flex: none; }
+.pm-title b { font-weight: 600; flex: 1; }
+.pm-switch { display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12.5px; position: relative; }
+.pm-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
+.pm-switch i { width: 26px; height: 15px; border-radius: 99px; background: rgba(28,36,56,.22); position: relative; transition: background .15s ease; flex: none; }
+.pm-switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s ease; }
+.pm-switch input:checked + i { background: var(--saffron); }
+.pm-switch input:checked + i::after { transform: translateX(11px); }
+.pm-switch input:focus-visible + i { outline: 2px solid var(--focus); outline-offset: 2px; }
+.pm-rows { position: relative; display: grid; gap: 12px; padding-left: 20px; }
+.pm-link { position: absolute; left: 0; top: 6px; bottom: 6px; width: 12px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--saffron); opacity: 0; transition: opacity .15s ease; }
+.pm-link i { flex: 1; width: 2px; border-radius: 2px; background: currentColor; }
+.pm-link svg { width: 10px; height: 10px; flex: none; }
+.pm-rows.linked .pm-link { opacity: 1; }
+.pm-row { display: grid; gap: 4px; min-width: 0; }
+.pm-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.pm-line > svg { width: 16px; height: 16px; opacity: .6; flex: none; }
+.pm-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.pm-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 99px; background: rgba(28,36,56,.08); opacity: .8; flex: none; }
+.pm-line output { margin-left: auto; font-variant-numeric: tabular-nums; opacity: .65; flex: none; }
+.pm-caption { font-size: 11.5px; opacity: .7; display: flex; align-items: center; gap: 6px; min-height: 16px; margin: 0; }
+.pm-group { display: grid; gap: 4px; }
+.pm-label { font-size: 11.5px; font-weight: 600; opacity: .6; margin: 0 0 0 8px; }
+.pm-display { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 10px; cursor: pointer; }
+.pm-display:hover, .pm-display[aria-expanded="true"] { background: rgba(28,36,56,.05); }
+.pm-display:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
+.pm-display > svg:first-child { width: 16px; height: 16px; opacity: .6; flex: none; }
+.pm-display span { flex: 1; min-width: 0; display: grid; }
+.pm-display b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-display small { font-size: 11.5px; opacity: .6; }
+.pm-display .chev { width: 12px; height: 12px; opacity: .5; transition: transform .2s ease; flex: none; }
+.pm-display[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.pm-more { padding: 2px 8px 8px 32px; }
+.pm-more[hidden] { display: none; }
+.spec { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 12px; margin: 0; }
 .spec dt { opacity: .6; }
-.spec dd { margin: 0; font-family: var(--mono); font-size: 12px; }
-.slider-row { display: grid; gap: 4px; }
-.slider-row label { display: flex; justify-content: space-between; font-size: 12.5px; }
-.slider-row output { font-family: var(--mono); font-size: 12px; opacity: .75; }
+.spec dd { margin: 0; font-family: var(--mono); font-size: 11.5px; }
 input[type="range"] { width: 100%; accent-color: var(--saffron); margin: 0; }
-.modes { display: grid; gap: 2px; }
-.mode { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 6px; cursor: pointer; font-family: var(--mono); font-size: 12px; }
-.mode:hover { background: var(--menu-hover); }
-.mode input { accent-color: var(--saffron); margin: 0; }
-.mode .tag { margin-left: auto; font-family: var(--body); font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--halo); color: #1c2438; }
-.arrange { display: flex; align-items: flex-end; gap: 6px; padding: 10px; border-radius: 8px; background: var(--menu-hover); justify-content: center; }
-.arrange .scr { border-radius: 4px; border: 1.5px solid currentColor; display: grid; place-items: center; font-size: 10px; font-weight: 600; opacity: .85; transition: order .2s; }
-.arrange .scr.main { border-color: var(--saffron); color: var(--saffron); }
-.arrange button { all: unset; cursor: pointer; font-size: 12px; font-weight: 600; color: var(--saffron-deep); justify-self: start; }
-.arrange button:focus-visible { outline: 2px solid var(--focus); }
+.pm-foot { display: flex; align-items: center; gap: 2px; border-top: 1px solid var(--menu-sep); padding-top: 10px; font-size: 12.5px; }
+.pm-foot button { all: unset; cursor: pointer; padding: 3px 5px; border-radius: 6px; opacity: .65; display: grid; place-items: center; }
+.pm-foot button:hover { background: var(--menu-hover); opacity: 1; }
+.pm-foot button:focus-visible { outline: 2px solid var(--focus); }
+.pm-foot svg { width: 15px; height: 15px; }
+.pm-foot .quit { margin-left: auto; }
 .desk-caption { font-size: .82rem; color: var(--muted); margin-top: .7rem; text-align: center; }
+.alt-dl { font-size: .9rem; color: var(--band-muted); }
+.alt-dl a { color: inherit; }
 
 /* ---------- Sections ---------- */
 section { scroll-margin-top: 70px; }
@@ -324,6 +348,8 @@ footer nav a:hover { color: var(--ink); }
     <symbol id="i-layers" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="3" y="7" width="13" height="10" rx="1.5"/><rect x="8" y="3" width="13" height="10" rx="1.5"/></symbol>
     <symbol id="i-bolt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l6-6 4 4 6-8"/><path d="M14 7h6v6"/></symbol>
     <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l-4 3 4 3m8-6 4 3-4 3M14 5l-4 14"/></symbol>
+    <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13.5a4.5 4.5 0 0 0 6.4.3l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.7 1.7"/><path d="M14 10.5a4.5 4.5 0 0 0-6.4-.3l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.7-1.7"/></symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
     <symbol id="i-yes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
     <symbol id="i-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 12h10"/></symbol>
   </defs>
@@ -348,7 +374,7 @@ footer nav a:hover { color: var(--ink); }
       <div class="hero-copy">
         <img class="mascot" src="assets/mascot.png" alt="Display Monk mascot: a small monk with a smiling monitor for a head, sitting cross-legged">
         <h1>Calm control for <em>your displays</em>.</h1>
-        <p class="lede">Display Monk lives in your Mac's menu bar and keeps every screen in balance. Brightness, HiDPI resolutions, arrangement and monitor controls for your built-in and external displays, one click away.</p>
+        <p class="lede">Display Monk lives in your Mac's menu bar and keeps every screen in balance. Brightness for every screen, kept in sync if you like, plus HiDPI resolutions, arrangement and monitor controls, one click away.</p>
         <div class="cta-row">
           <a class="btn btn-primary get-app" href="#download">
             <svg><use href="#i-apple"/></svg>
@@ -375,51 +401,51 @@ footer nav a:hover { color: var(--ink); }
             <span id="clock" class="mono" style="font-family:inherit">Wed 21 Oct 9:41 AM</span>
           </div>
 
-          <div class="menu" id="menu" role="group" aria-label="Display Monk">
-            <div class="menu-head"><img src="assets/mascot.png" alt=""><strong>Display Monk</strong><svg><use href="#i-gear"/></svg></div>
+          <div class="menu" id="menu" role="group" aria-label="Display Monk menu preview">
+            <div class="pm-head">
+              <img src="assets/icon-dark.png" alt="">
+              <div><strong>Display Monk</strong><span class="pm-status"><i class="dot ok"></i>2 displays connected</span></div>
+            </div>
 
-            <button class="mi" aria-expanded="false" aria-controls="sub-builtin"><svg><use href="#i-laptop"/></svg><span>Built-in Display</span><svg class="chev"><use href="#i-chev"/></svg></button>
-            <div class="sub" id="sub-builtin" hidden>
-              <dl class="spec"><dt>Panel</dt><dd>Liquid Retina XDR</dd><dt>Native</dt><dd>3024 × 1964</dd><dt>Refresh</dt><dd>ProMotion · 120 Hz</dd><dt>Peak</dt><dd>1000 nits SDR · 1600 HDR</dd></dl>
-            </div>
-            <button class="mi" aria-expanded="false" aria-controls="sub-external"><svg><use href="#i-monitor"/></svg><span>External Display</span><svg class="chev"><use href="#i-chev"/></svg></button>
-            <div class="sub" id="sub-external" hidden>
-              <dl class="spec"><dt>Model</dt><dd>LG UltraFine 27"</dd><dt>Native</dt><dd>3840 × 2160</dd><dt>Refresh</dt><dd>60 Hz</dd><dt>Control</dt><dd>DDC/CI over USB-C</dd></dl>
-            </div>
-            <hr>
-            <button class="mi" aria-expanded="true" aria-controls="sub-bright"><svg><use href="#i-sun"/></svg><span>Brightness</span><svg class="chev"><use href="#i-chev"/></svg></button>
-            <div class="sub" id="sub-bright">
-              <div class="slider-row">
-                <label for="b-built">Built-in <output id="o-built" for="b-built">380 nits</output></label>
-                <input type="range" id="b-built" min="0" max="500" value="380">
+            <div class="pm-panel">
+              <div class="pm-title">
+                <svg><use href="#i-sun"/></svg><b>Brightness</b>
+                <label class="pm-switch"><span>Sync Brightness</span><input type="checkbox" id="sync" role="switch"><i></i></label>
               </div>
-              <div class="slider-row">
-                <label for="b-ext">External <output id="o-ext" for="b-ext">70%</output></label>
-                <input type="range" id="b-ext" min="0" max="100" value="70">
+              <div class="pm-rows" id="rows">
+                <div class="pm-link" aria-hidden="true"><i></i><svg><use href="#i-link"/></svg><i></i></div>
+                <div class="pm-row">
+                  <div class="pm-line"><svg><use href="#i-laptop"/></svg><span class="pm-name">Built-in Retina Display</span><span class="pm-badge">Native</span><output id="o-built" for="b-built">70%</output></div>
+                  <input type="range" id="b-built" min="0" max="100" value="70" aria-label="Built-in Retina Display brightness">
+                </div>
+                <div class="pm-row">
+                  <div class="pm-line"><svg><use href="#i-monitor"/></svg><span class="pm-name">LG UltraFine 27"</span><span class="pm-badge">DDC</span><output id="o-ext" for="b-ext">45%</output></div>
+                  <input type="range" id="b-ext" min="0" max="100" value="45" aria-label="LG UltraFine brightness">
+                </div>
               </div>
+              <p class="pm-caption" id="caption">Each display is adjusted on its own</p>
             </div>
-            <button class="mi" aria-expanded="false" aria-controls="sub-arrange"><svg><use href="#i-arrange"/></svg><span>Arrangement</span><svg class="chev"><use href="#i-chev"/></svg></button>
-            <div class="sub" id="sub-arrange" hidden>
-              <div class="arrange" id="arrange">
-                <div class="scr" style="width:84px;height:48px;order:1">LG 27"</div>
-                <div class="scr main" style="width:58px;height:38px;order:2">Built-in</div>
+
+            <div class="pm-group">
+              <p class="pm-label">Displays</p>
+              <button class="pm-display" aria-expanded="false" aria-controls="more-built"><svg><use href="#i-laptop"/></svg><span><b>Built-in Retina Display</b><small>1512 × 982 HiDPI · 120Hz</small></span><svg class="chev"><use href="#i-chev"/></svg></button>
+              <div class="pm-more" id="more-built" hidden>
+                <dl class="spec"><dt>Resolution</dt><dd>1512 × 982 HiDPI</dd><dt>Refresh</dt><dd>ProMotion · 120Hz</dd><dt>Rotation</dt><dd>0°</dd></dl>
               </div>
-              <button type="button" id="swap" class="arrange-swap" style="all:unset;cursor:pointer;font-size:12px;font-weight:600;color:var(--saffron-deep)">Swap sides ⇄</button>
-            </div>
-            <button class="mi" aria-expanded="false" aria-controls="sub-modes"><svg><use href="#i-modes"/></svg><span>Display Modes</span><svg class="chev"><use href="#i-chev"/></svg></button>
-            <div class="sub" id="sub-modes" hidden>
-              <div class="modes" role="radiogroup" aria-label="Built-in resolution">
-                <label class="mode"><input type="radio" name="mode" id="m1"> 1352 × 878</label>
-                <label class="mode"><input type="radio" name="mode" id="m2" checked> 1512 × 982</label>
-                <label class="mode"><input type="radio" name="mode" id="m3"> 1800 × 1169</label>
-                <label class="mode"><input type="radio" name="mode" id="m4"> 1728 × 1117 <span class="tag">HiDPI</span></label>
+              <button class="pm-display" aria-expanded="false" aria-controls="more-ext"><svg><use href="#i-monitor"/></svg><span><b>LG UltraFine 27"</b><small>2560 × 1440 HiDPI · 60Hz</small></span><svg class="chev"><use href="#i-chev"/></svg></button>
+              <div class="pm-more" id="more-ext" hidden>
+                <dl class="spec"><dt>Contrast</dt><dd>70%</dd><dt>Volume</dt><dd>40%</dd><dt>Input</dt><dd>USB-C</dd><dt>Position</dt><dd>Left of MacBook</dd></dl>
               </div>
             </div>
-            <hr>
-            <button class="mi" id="prefs"><svg><use href="#i-gear"/></svg><span>Preferences…</span><kbd>⌘,</kbd></button>
+
+            <div class="pm-foot">
+              <button type="button" id="pm-settings" aria-label="Settings"><svg><use href="#i-gear"/></svg></button>
+              <button type="button" id="pm-refresh" aria-label="Refresh displays"><svg><use href="#i-refresh"/></svg></button>
+              <button type="button" class="quit" id="pm-quit">Quit Display Monk</button>
+            </div>
           </div>
         </div>
-        <p class="desk-caption">Try it: drag the brightness slider, or open any row.</p>
+        <p class="desk-caption">A preview with example values. Turn on Sync Brightness, then drag either slider.</p>
       </div>
     </div>
   </section>
@@ -435,14 +461,14 @@ footer nav a:hover { color: var(--ink); }
         <div class="feature">
           <div class="ic"><svg><use href="#i-sun"/></svg></div>
           <h3>Brightness for every screen</h3>
-          <p>Native brightness for Apple displays, DDC for external monitors, and software dimming for screens that support neither.</p>
-          <span class="unit">native · DDC/CI · gamma</span>
+          <p>Native brightness for Apple displays, DDC for external monitors, and software dimming for the rest. Combined mode keeps dimming past the backlight's minimum, all the way to black.</p>
+          <span class="unit">native · DDC/CI · gamma · down to black</span>
         </div>
         <div class="feature">
-          <div class="ic"><svg><use href="#i-bolt"/></svg></div>
-          <h3>Down to black</h3>
-          <p>Combined brightness drives the real backlight first, then dims the image in software once the backlight hits its minimum, all the way to black.</p>
-          <span class="unit">top ¾ backlight · bottom ¼ software</span>
+          <div class="ic"><svg><use href="#i-link"/></svg></div>
+          <h3>Sync brightness</h3>
+          <p>Move one slider and every display follows, from either screen or with the brightness keys. Turn it off and each display is on its own again.</p>
+          <span class="unit">one level · every display · both ways</span>
         </div>
         <div class="feature">
           <div class="ic"><svg><use href="#i-modes"/></svg></div>
@@ -521,7 +547,8 @@ footer nav a:hover { color: var(--ink); }
           <h2>Get Display Monk for your Mac.</h2>
           <p>One small app for Apple silicon and Intel Macs. It sits in your menu bar, has no Dock icon, and stays out of the way.</p>
           <p class="ver">Version <b data-cfg="version"></b> · <b data-cfg="size"></b> · released <b data-cfg="date"></b></p>
-          <a class="btn btn-primary get-app" id="dl-main" href="#download"><svg><use href="#i-download"/></svg>Download DisplayMonk.zip</a>
+          <a class="btn btn-primary get-app" id="dl-main" href="#download"><svg><use href="#i-download"/></svg>Download DisplayMonk.dmg</a>
+          <p class="alt-dl">Prefer a zip? <a id="dl-zip" href="#download">Download DisplayMonk.zip</a></p>
           <p style="font-size:.9rem;margin-top:.4rem">Blocked on first launch? Clear it from Terminal instead:</p>
           <div class="brew">
             <code id="term-cmd">xattr -dr com.apple.quarantine "/Applications/Display Monk.app"</code>
@@ -532,7 +559,7 @@ footer nav a:hover { color: var(--ink); }
           <div>
             <h3>Install in three steps</h3>
             <ol class="steps">
-              <li><span>Double-click <span class="mono">DisplayMonk.zip</span> to unzip it, then drag Display Monk into Applications.</span></li>
+              <li><span>Open <span class="mono">DisplayMonk.dmg</span> and drag Display Monk into Applications.</span></li>
               <li><span>Open it. The app isn't signed with an Apple Developer ID yet, so macOS blocks the first launch. Click Done, then go to System Settings › Privacy &amp; Security and click Open Anyway. Display Monk appears in your menu bar.</span></li>
               <li><span>Optional: turn on the brightness and volume key options to control the external display under your pointer. macOS asks for Accessibility access then.</span></li>
             </ol>
@@ -571,6 +598,10 @@ footer nav a:hover { color: var(--ink); }
           <p>Most monitors that support DDC/CI work over USB-C, Thunderbolt and DisplayPort. Some HDMI ports on Apple silicon Macs and some docks block DDC. In that case Display Monk falls back to software dimming, which works on any screen.</p>
         </details>
         <details>
+          <summary>Can my displays share one brightness?</summary>
+          <p>Yes. Turn on Sync Brightness at the top of the menu, and moving any display's slider moves them all. The brightness keys work too. Turning it off leaves each display where it is. Sync matches the percentage, not the light output, so two different panels can look a little different at the same level.</p>
+        </details>
+        <details>
           <summary>Why does it ask for Accessibility access?</summary>
           <p>Only if you turn on the brightness or volume key options. macOS needs it so Display Monk can catch those keys and send them to the display under your pointer. After updating the app, remove Display Monk from the Accessibility list with – and add it again with +, because macOS stops trusting the new copy.</p>
         </details>
@@ -606,14 +637,17 @@ footer nav a:hover { color: var(--ink); }
 <script>
 /* ---- Edit these to match your release ---- */
 const CONFIG = {
-  version: "0.1.0",
-  size: "0.9 MB",
+  version: "0.2.0",
+  size: "1.2 MB",
   date: "21 Oct 2026",
   minOS: "macOS 13 Ventura or later",
   // The app file, relative to this page (or a full URL such as a GitHub release asset).
-  downloadUrl: "https://github.com/AlwinOvungal/Display-Monk/releases/latest/download/DisplayMonk.zip",
-  // Add past releases here as { v: "0.0.9", os: "macOS 13 Ventura", url: "..." }.
-  older: []
+  downloadUrl: "https://github.com/AlwinOvungal/Display-Monk/releases/latest/download/DisplayMonk.dmg",
+  zipUrl: "https://github.com/AlwinOvungal/Display-Monk/releases/latest/download/DisplayMonk.zip",
+  // Past releases, newest first.
+  older: [
+    { v: "0.1.0", os: "macOS 13 Ventura or later", url: "https://github.com/AlwinOvungal/Display-Monk/releases/download/v0.1.0/DisplayMonk.zip" }
+  ]
 };
 
 const COMPARE = [
@@ -622,6 +656,7 @@ const COMPARE = [
   ["DDC brightness for external monitors", 1, 1],
   ["Software dimming", 1, 0],
   ["Combined brightness down to black", 1, 0],
+  ["Sync brightness across displays", 1, 0],
   ["Brightness & volume keys for the display under the pointer", 1, 0],
   ["Resolution"],
   ["Resolution list with HiDPI modes and refresh rate", 1, 1],
@@ -658,6 +693,11 @@ const COMPARE = [
     });
   });
 
+  const zip = $("#dl-zip");
+  zip.href = CONFIG.zipUrl;
+  zip.target = "_blank";
+  zip.rel = "noopener";
+
   const tick = '<svg class="yes" aria-label="Included"><use href="#i-yes"/></svg>';
   const dash = '<svg class="no" aria-label="Not included"><use href="#i-no"/></svg>';
   $("#compare").innerHTML = COMPARE.map(r => r.length === 1
@@ -680,27 +720,35 @@ const COMPARE = [
     glyph.setAttribute("aria-expanded", open);
     menu.hidden = !open;
   });
-  $$(".mi[aria-controls]").forEach(btn => btn.addEventListener("click", () => {
-    const sub = document.getElementById(btn.getAttribute("aria-controls"));
+  $$(".pm-display").forEach(btn => btn.addEventListener("click", () => {
+    const more = document.getElementById(btn.getAttribute("aria-controls"));
     const open = btn.getAttribute("aria-expanded") !== "true";
     btn.setAttribute("aria-expanded", open);
-    sub.hidden = !open;
+    more.hidden = !open;
   }));
 
-  const dim = $("#dim"), bb = $("#b-built"), be = $("#b-ext");
+  // Brightness: with Sync on, either slider moves both, like the app. Turning Sync on keeps the
+  // display you're on (the built-in one here) and matches the other to it.
+  const dim = $("#dim"), sync = $("#sync"), bb = $("#b-built"), be = $("#b-ext");
+  const rows = $("#rows"), caption = $("#caption");
   const paint = () => {
-    $("#o-built").textContent = bb.value + " nits";
+    $("#o-built").textContent = bb.value + "%";
     $("#o-ext").textContent = be.value + "%";
-    dim.style.opacity = ((1 - bb.value / 500) * 0.72).toFixed(3);
+    dim.style.opacity = ((1 - bb.value / 100) * 0.72).toFixed(3);
+    rows.classList.toggle("linked", sync.checked);
+    caption.innerHTML = sync.checked
+      ? '<i class="dot sync"></i>Linked across 2 displays · move any slider'
+      : "Each display is adjusted on its own";
   };
-  bb.addEventListener("input", paint); be.addEventListener("input", paint); paint();
+  const follow = (from, to) => { if (sync.checked) to.value = from.value; paint(); };
+  bb.addEventListener("input", () => follow(bb, be));
+  be.addEventListener("input", () => follow(be, bb));
+  sync.addEventListener("change", () => { if (sync.checked) be.value = bb.value; paint(); });
+  paint();
 
-  $("#swap").addEventListener("click", () => {
-    const [a, b] = $$("#arrange .scr");
-    const t = a.style.order; a.style.order = b.style.order; b.style.order = t;
-  });
-
-  $("#prefs").addEventListener("click", () => toast("Preferences open in the app, with ⌘,"));
+  $("#pm-settings").addEventListener("click", () => toast("Settings: brightness keys, volume keys, on-screen display, launch at login"));
+  $("#pm-refresh").addEventListener("click", () => toast("Displays refreshed"));
+  $("#pm-quit").addEventListener("click", () => toast("In the app this quits Display Monk (⌘Q)"));
 
   // Live clock in the faux menu bar
   const clock = $("#clock");

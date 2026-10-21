@@ -131,7 +131,7 @@ struct MenuView: View {
             }
             .menuStyle(.button)
             .menuIndicator(.hidden)
-            .buttonStyle(.borderless)
+            .buttonStyle(.plain)
             .fixedSize()
             .help("Settings")
             Button { store.reload() } label: {
@@ -273,7 +273,7 @@ struct BrightnessRow: View {
                 .controlSize(.small)
                 .accessibilityLabel("\(state.display.name) brightness")
             if state.brightnessMethod == .software {
-                Text("Software dimming darkens the image only")
+                Text("Software dimming: darkens the image only")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
             }
@@ -302,7 +302,7 @@ struct BrightnessMethodMenu: View {
         }
         .menuStyle(.button)
         .menuIndicator(.hidden)
-        .buttonStyle(.borderless)
+        .buttonStyle(.plain)
         .fixedSize()
         .font(.caption2.weight(.semibold))
         .foregroundStyle(.secondary)
@@ -477,7 +477,7 @@ struct DisplayControls: View {
             if !state.display.isBuiltIn, let reference {
                 let current = state.placement(relativeTo: reference)
                 let side = current?.0 ?? Arrangement.nearestPlacement(of: state.frame, relativeTo: reference.frame)
-                let name = reference.display.isBuiltIn ? "MacBook" : reference.display.name
+                let name = reference.display.isBuiltIn ? "MacBook" : shortName(reference.display.name)
                 Menu(current.map { positionLabel($0.0, name) } ?? "Custom position") {
                     ForEach(Placement.allCases, id: \.self) { placement in
                         Toggle(positionLabel(placement, name), isOn: Binding(
@@ -500,10 +500,16 @@ struct DisplayControls: View {
             Spacer(minLength: 0)
             if !state.display.isMain {
                 Button("Set as Main") { state.makeMain(among: store.displays) }
+                    .fixedSize()
                     .help("Moves the menu bar and Dock to this display")
             }
         }
         .controlSize(.small)
+    }
+
+    /// Long display names would push the position menu past the popover's width.
+    private func shortName(_ name: String) -> String {
+        name.count > 16 ? String(name.prefix(15)).trimmingCharacters(in: .whitespaces) + "…" : name
     }
 
     private func positionLabel(_ placement: Placement, _ reference: String) -> String {
