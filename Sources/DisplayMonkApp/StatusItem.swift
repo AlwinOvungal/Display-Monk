@@ -85,14 +85,16 @@ final class StatusItemController: NSObject {
         panel.hidesOnDeactivate = false
         panel.isMovable = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-        NotificationCenter.default.addObserver(self, selector: #selector(panelDidResize), name: NSWindow.didResizeNotification, object: panel)
+        NotificationCenter.default.addObserver(self, selector: #selector(reanchor), name: NSWindow.didResizeNotification, object: panel)
+        // Set as Main moves the menu bar, and the icon with it.
+        NotificationCenter.default.addObserver(self, selector: #selector(reanchor), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         self.controller = controller
         self.panel = panel
         return panel
     }
 
-    /// Keeps the top edge under the icon when the content grows or shrinks.
-    @objc private func panelDidResize() {
+    /// Keeps the top edge under the icon when the content grows or shrinks, or the screens change.
+    @objc private func reanchor() {
         guard let panel, panel.isVisible else { return }
         anchor = anchorPoint(for: panel.frame.width)
         panel.setFrameTopLeftPoint(anchor)
