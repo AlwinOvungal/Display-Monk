@@ -32,6 +32,17 @@ public enum DisplayModes {
         ModeList.organize(all(for: display).map(descriptor), includeUnusable: includeUnusable)
     }
 
+    /// The panel's own unscaled mode: the largest non-HiDPI size, at the current refresh rate
+    /// when the display is already at that size, otherwise at the highest rate.
+    public static func native(for display: CGDirectDisplayID) -> ModeDescriptor? {
+        let unscaled = available(for: display).filter { !$0.isHiDPI }
+        guard let largest = unscaled.max(by: { $0.pixelWidth * $0.pixelHeight < $1.pixelWidth * $1.pixelHeight }) else {
+            return nil
+        }
+        let current = current(for: display).flatMap { $0.width == largest.width && $0.height == largest.height ? $0 : nil }
+        return ModeList.bestMatch(for: ModeSpec(width: largest.width, height: largest.height, hiDPI: false), in: unscaled, current: current)
+    }
+
     public static func current(for display: CGDirectDisplayID) -> ModeDescriptor? {
         CGDisplayCopyDisplayMode(display).map(descriptor)
     }

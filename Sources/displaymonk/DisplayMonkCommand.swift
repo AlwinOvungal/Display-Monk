@@ -15,7 +15,7 @@ struct DisplayMonkCommand: ParsableCommand {
         version: "0.1.0",
         subcommands: [
             List.self, Brightness.self, Contrast.self, Volume.self, Mute.self, Input.self,
-            GetVCP.self, SetVCP.self, Modes.self, SetMode.self, Rotate.self, HiDPI.self,
+            GetVCP.self, SetVCP.self, Modes.self, SetMode.self, Rotate.self, HiDPI.self, Reset.self,
         ]
     )
 }
@@ -432,5 +432,30 @@ struct HiDPI: ParsableCommand {
         case .installed: "installed by Display Monk"
         case .foreign: "from another app"
         }
+    }
+}
+
+// MARK: - Reset
+
+struct Reset: ParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Put a display back to its native resolution if it got stuck in a wrong mode.",
+        discussion: """
+        Stops any mirroring involving the display and applies its native unscaled resolution. \
+        Quit the Display Monk app first if it is running HiDPI on that display with a virtual \
+        screen; quitting removes the virtual screen.
+        """
+    )
+
+    @OptionGroup var target: DisplayOption
+
+    func run() throws {
+        let controller = try target.controller { !$0.display.isBuiltIn }
+        let id = controller.display.id
+        VirtualMirror.reset(id)
+        guard let native = DisplayModes.native(for: id) else {
+            throw CLIError("could not find the native resolution of \(controller.display.name)")
+        }
+        print("\(controller.display.name): reset to \(native)")
     }
 }
