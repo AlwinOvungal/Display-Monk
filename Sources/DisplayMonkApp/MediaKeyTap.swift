@@ -90,13 +90,20 @@ final class MediaKeyTap {
 
     /// Returns true when the key was handled and must not reach the system.
     fileprivate func handle(_ key: MediaKey, isDown: Bool, fine: Bool) -> Bool {
-        guard let state = DisplayStore.shared.displayUnderMouse else { return false }
+        let store = DisplayStore.shared
+        guard let state = store.displayUnderMouse else { return false }
         switch key {
         case .brightnessUp, .brightnessDown:
-            guard Preferences.brightnessKeys, state.brightnessMethod != .native else { return false }
+            guard Preferences.brightnessKeys else { return false }
+            guard state.brightnessMethod != .native else {
+                // macOS changes native displays itself; synced displays follow once it has.
+                if isDown { store.followSystemBrightnessChange() }
+                return false
+            }
             if isDown {
-                state.setBrightness(LevelScale.step(state.brightness, up: key == .brightnessUp, fine: fine))
-                showOSD(.brightness, detail: state.brightnessDetail, level: state.brightness, on: state)
+                store.setBrightness(LevelScale.step(state.brightness, up: key == .brightnessUp, fine: fine), for: state)
+                let detail = store.isSyncActive ? "\(state.brightnessDetail) · Synced" : state.brightnessDetail
+                showOSD(.brightness, detail: detail, level: state.brightness, on: state)
             }
             return true
         case .volumeUp, .volumeDown:

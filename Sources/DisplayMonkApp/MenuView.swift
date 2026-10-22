@@ -4,57 +4,159 @@ import DisplayKit
 import DisplayMonkCore
 import SwiftUI
 
+/// The menu bar popover: a compact header, brightness for every display (with Sync
+/// Brightness), each display's other settings behind a disclosure row, and a quiet footer.
 struct MenuView: View {
     @ObservedObject var store: DisplayStore
     @AppStorage(Preferences.brightnessKeysKey) private var brightnessKeys = false
     @AppStorage(Preferences.volumeKeysKey) private var volumeKeys = false
     @AppStorage(Preferences.showOSDKey) private var showOSD = true
+    /// `Display.persistentKey`s of the display rows that are open, comma-separated.
+    @AppStorage("expandedDisplays") private var expandedDisplays = ""
     @State private var launchAtLogin = LoginItem.isEnabled
     @State private var accessibilityTrusted = AXIsProcessTrusted()
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 12) {
+            header
             if store.displays.isEmpty {
-                Text("No displays found").foregroundStyle(.secondary)
+                emptyState
+            } else {
+                BrightnessPanel(store: store)
+                displayList
+                if store.displays.count > 1 {
+                    ArrangementSection(store: store)
+                }
             }
-            ForEach(store.displays) { state in
-                DisplaySection(state: state, store: store)
-            }
-            if store.displays.count > 1 {
-                ArrangementSection(store: store)
-                Divider()
-            }
-            VStack(alignment: .leading, spacing: 6) {
-                Toggle("Brightness keys control external displays", isOn: keyBinding($brightnessKeys))
-                Toggle("Volume keys control display speakers", isOn: keyBinding($volumeKeys))
-                Toggle("Show on-screen display", isOn: $showOSD)
-                Toggle("Launch at login", isOn: Binding(
-                    get: { launchAtLogin },
-                    set: { launchAtLogin = LoginItem.setEnabled($0) }
-                ))
-            }
-            .toggleStyle(.checkbox)
-            .font(.callout)
-            .padding(.horizontal, 4)
             if brightnessKeys || volumeKeys, !accessibilityTrusted {
                 accessibilityWarning
             }
-            HStack {
-                Button("Refresh") { store.reload() }
-                Spacer()
-                Button("Quit Display Monk") { NSApp.terminate(nil) }
-                    .keyboardShortcut("q")
-            }
-            .padding(.horizontal, 4)
+            Divider()
+            footer
         }
         .padding(14)
         .frame(width: 340)
+        .tint(.monkSaffron)
         .background(VisualEffectBackground())
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.primary.opacity(0.12)))
         .onReceive(NotificationCenter.default.publisher(for: .menuWillShow)) { _ in
             accessibilityTrusted = AXIsProcessTrusted()
         }
+        .onAppear {
+            store.refreshIfStale()
+            MediaKeyTap.shared.update()
+            accessibilityTrusted = AXIsProcessTrusted()
+        }
+    }
+
+    // MARK: Header
+
+    private var header: some View {
+        HStack(spacing: 10) {
+            Image(nsImage: NSApp.applicationIconImage)
+                .resizable()
+                .interpolation(.high)
+                .frame(width: 30, height: 30)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Display Monk").font(.system(size: 13, weight: .semibold))
+                HStack(spacing: 5) {
+                    StatusDot(color: store.displays.isEmpty ? .secondary : .green)
+                    Text(statusText).font(.caption).foregroundStyle(.secondary)
+                }
+            }
+            Spacer()
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    private var statusText: String {
+        switch store.displays.count {
+        case 0: "No displays found"
+        case 1: "1 display connected"
+        case let count: "\(count) displays connected"
+        }
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 6) {
+            Image(systemName: "display").font(.title2).foregroundStyle(.secondary)
+            Text("No displays found").font(.callout.weight(.medium))
+            Text("Connect a display, then refresh.").font(.caption).foregroundStyle(.secondary)
+            Button("Refresh") { store.reload() }
+                .controlSize(.small)
+                .padding(.top, 2)
+        }
+        .frame(maxWidth: .infinity)
+        .monkPanel(padding: 16)
+    }
+
+    // MARK: Displays
+
+    private var displayList: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Displays")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+            VStack(spacing: 2) {
+                ForEach(store.displays) { state in
+                    DisplayRow(state: state, store: store, isExpanded: expandedKeys.contains(state.display.persistentKey)) {
+                        toggleExpanded(state)
+                    }
+                }
+            }
+        }
+    }
+
+    private var expandedKeys: Set<String> {
+        Set(expandedDisplays.split(separator: ",").map(String.init))
+    }
+
+    private func toggleExpanded(_ state: DisplayState) {
+        var keys = expandedKeys
+        let key = state.display.persistentKey
+        if keys.remove(key) == nil { keys.insert(key) }
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) {
+            expandedDisplays = keys.sorted().joined(separator: ",")
+        }
+    }
+
+    // MARK: Footer
+
+    private var footer: some View {
+        HStack(spacing: 4) {
+            Menu {
+                Toggle("Brightness keys control external displays", isOn: keyBinding($brightnessKeys))
+                Toggle("Volume keys control display speakers", isOn: keyBinding($volumeKeys))
+                Toggle("Show on-screen display", isOn: $showOSD)
+                Divider()
+                Toggle("Launch at login", isOn: Binding(
+                    get: { launchAtLogin },
+                    set: { launchAtLogin = LoginItem.setEnabled($0) }
+                ))
+            } label: {
+                Image(systemName: "gearshape")
+            }
+            .menuStyle(.button)
+            .menuIndicator(.hidden)
+            .buttonStyle(.plain)
+            .fixedSize()
+            .help("Settings")
+            Button { store.reload() } label: {
+                Image(systemName: "arrow.clockwise")
+            }
+            .buttonStyle(.borderless)
+            .help("Refresh displays")
+            Spacer()
+            Button("Quit Display Monk") { NSApp.terminate(nil) }
+                .keyboardShortcut("q")
+                .buttonStyle(.borderless)
+        }
+        .font(.callout)
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 4)
     }
 
     /// Every new build of an unsigned app invalidates its old Accessibility grant, even though
@@ -75,7 +177,7 @@ struct MenuView: View {
             .controlSize(.small)
         }
         .font(.callout)
-        .padding(.horizontal, 4)
+        .monkPanel()
     }
 
     /// Key toggles start or stop the event tap, which asks for Accessibility access the first time.
@@ -88,78 +190,255 @@ struct MenuView: View {
     }
 }
 
-struct DisplaySection: View {
+// MARK: - Brightness
+
+/// One slider per display, plus Sync Brightness. The rows look the same synced or not, so
+/// switching sync doesn't move anything; a saffron link joins the sliders while it's on.
+struct BrightnessPanel: View {
+    @ObservedObject var store: DisplayStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 6) {
+                Image(systemName: "sun.max.fill").foregroundStyle(Color.monkSaffron)
+                Text("Brightness").font(.system(size: 13, weight: .semibold))
+                Spacer()
+                if store.canSync {
+                    Toggle("Sync Brightness", isOn: Binding(
+                        get: { store.sync.isEnabled },
+                        set: { enabled in withAnimation(.easeInOut(duration: 0.15)) { store.setSyncEnabled(enabled) } }
+                    ))
+                    .toggleStyle(.switch)
+                    .controlSize(.mini)
+                    .font(.callout)
+                    .help("Keep all displays at the same brightness")
+                }
+            }
+            VStack(spacing: 12) {
+                ForEach(store.displays) { state in
+                    BrightnessRow(state: state, store: store)
+                }
+            }
+            .padding(.leading, store.canSync ? 20 : 0)
+            .overlay(alignment: .leading) {
+                if store.canSync {
+                    LinkBracket(isActive: store.isSyncActive)
+                }
+            }
+            if store.canSync || store.sync.isEnabled {
+                caption
+            }
+        }
+        .monkPanel()
+    }
+
+    private var caption: some View {
+        HStack(spacing: 6) {
+            if store.isSyncActive {
+                if store.isSyncMatched {
+                    StatusDot(color: .monkSaffron)
+                    Text("Linked across \(store.displays.count) displays · move any slider")
+                } else {
+                    StatusDot(color: .orange)
+                    Text("Not matched")
+                    Spacer()
+                    Button("Match") { store.matchAll() }
+                        .buttonStyle(.link)
+                        .help("Set every display to the brightness of the one under the pointer")
+                }
+            } else if store.canSync {
+                Text("Each display is adjusted on its own")
+            } else {
+                Text("Sync is on. Connect another display to use it.")
+            }
+        }
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .frame(minHeight: 16)
+    }
+}
+
+struct BrightnessRow: View {
+    @ObservedObject var state: DisplayState
+    @ObservedObject var store: DisplayStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: state.display.isBuiltIn ? "laptopcomputer" : "display")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+                Text(state.display.name)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .help(state.display.name)
+                BrightnessMethodMenu(state: state)
+                Spacer(minLength: 6)
+                Text(percentText(state.brightness))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            .font(.callout)
+            Slider(value: Binding(get: { state.brightness }, set: { store.setBrightness($0, for: state) }), in: 0 ... 1)
+                .controlSize(.small)
+                .accessibilityLabel("\(state.display.name) brightness")
+            if state.brightnessMethod == .software {
+                Text("Software dimming: darkens the image only")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+/// The small badge naming how brightness is changed, with the choices behind it.
+struct BrightnessMethodMenu: View {
+    @ObservedObject var state: DisplayState
+
+    var body: some View {
+        Menu {
+            ForEach(state.supportedMethods, id: \.self) { method in
+                Toggle(label(for: method), isOn: Binding(
+                    get: { state.brightnessMethod == method },
+                    set: { if $0 { state.setBrightnessMethod(method) } }
+                ))
+            }
+            if state.brightnessMethod != .software {
+                Divider()
+                Toggle("Combined: Dim to Black Below Minimum", isOn: Binding(get: { state.combined }, set: state.setCombined))
+            }
+        } label: {
+            Text(label(for: state.brightnessMethod))
+        }
+        .menuStyle(.button)
+        .menuIndicator(.hidden)
+        .buttonStyle(.plain)
+        .fixedSize()
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 1)
+        .background(Capsule().fill(Color.primary.opacity(0.08)))
+        .help(state.isCombined ? "How brightness is changed: \(label(for: state.brightnessMethod)), then software dimming to black" : "How brightness is changed on this display")
+    }
+
+    private func label(for method: BrightnessMethod) -> String {
+        switch method {
+        case .native: "Native"
+        case .ddc: "DDC"
+        case .software: "Software"
+        }
+    }
+}
+
+/// The link drawn beside synced sliders.
+struct LinkBracket: View {
+    let isActive: Bool
+
+    var body: some View {
+        VStack(spacing: 3) {
+            Capsule().frame(width: 2)
+            Image(systemName: "link").font(.system(size: 9, weight: .bold))
+            Capsule().frame(width: 2)
+        }
+        .foregroundStyle(Color.monkSaffron)
+        .frame(width: 12)
+        .padding(.vertical, 6)
+        .opacity(isActive ? 1 : 0)
+        .animation(.easeInOut(duration: 0.15), value: isActive)
+        .accessibilityHidden(true)
+    }
+}
+
+// MARK: - Display rows
+
+/// A display's name and current mode; opens to the display's other settings.
+struct DisplayRow: View {
+    @ObservedObject var state: DisplayState
+    @ObservedObject var store: DisplayStore
+    let isExpanded: Bool
+    let toggle: () -> Void
+    @State private var isHovered = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Button(action: toggle) {
+                HStack(spacing: 8) {
+                    Image(systemName: state.display.isBuiltIn ? "laptopcomputer" : "display")
+                        .foregroundStyle(.secondary)
+                        .frame(width: 18)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text(state.display.name).lineLimit(1).truncationMode(.middle)
+                        Text(summary).font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    }
+                    Spacer(minLength: 6)
+                    if state.display.isMain, store.displays.count > 1 {
+                        Text("Main").font(.caption2.weight(.semibold)).foregroundStyle(.secondary)
+                    }
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                }
+                .font(.callout)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help(state.display.name)
+            .accessibilityHint(isExpanded ? "Hides this display's settings" : "Shows this display's settings")
+            if isExpanded {
+                DisplayControls(state: state, store: store)
+                    .transition(.opacity)
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 7)
+        .background(
+            RoundedRectangle(cornerRadius: 10, style: .continuous)
+                .fill(Color.primary.opacity(isExpanded ? 0.05 : isHovered ? 0.04 : 0))
+        )
+        .onHover { isHovered = $0 }
+    }
+
+    private var summary: String {
+        guard let mode = state.currentMode else { return state.display.isBuiltIn ? "Built-in display" : "External display" }
+        let size = "\(mode.width) × \(mode.height)" + (mode.isHiDPI ? " HiDPI" : "")
+        return mode.refreshLabel.isEmpty ? size : "\(size) · \(mode.refreshLabel)"
+    }
+}
+
+/// Everything for one display apart from brightness: the controls the menu always had.
+struct DisplayControls: View {
     @ObservedObject var state: DisplayState
     @ObservedObject var store: DisplayStore
 
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
-            header
-            VStack(alignment: .leading, spacing: 10) {
+            if let contrast = state.contrast {
                 LabeledSlider(
-                    title: state.brightnessTitle,
-                    valueText: percentText(state.brightness),
-                    icon: "sun.max",
-                    value: Binding(get: { state.brightness }, set: state.setBrightness)
+                    title: "Contrast",
+                    valueText: percentText(contrast),
+                    icon: "circle.lefthalf.filled",
+                    value: Binding(get: { contrast }, set: state.setContrast)
                 )
-                if let contrast = state.contrast {
-                    LabeledSlider(
-                        title: "Contrast",
-                        valueText: percentText(contrast),
-                        icon: "circle.lefthalf.filled",
-                        value: Binding(get: { contrast }, set: state.setContrast)
-                    )
-                }
-                if let volume = state.volume {
-                    LabeledSlider(
-                        title: "Volume",
-                        valueText: state.volumeDetail,
-                        icon: state.muted ? "speaker.slash.fill" : "speaker.wave.2.fill",
-                        iconAction: { state.setMuted(!state.muted) },
-                        value: Binding(get: { volume }, set: state.setVolume)
-                    )
-                }
-                if !state.resolutionChoices.isEmpty {
-                    ResolutionMenu(state: state)
-                }
-                if !state.display.isBuiltIn {
-                    hiDPIToggle
-                }
-                controls
             }
-            .padding(.horizontal, 4)
-        }
-        .padding(.bottom, 4)
-    }
-
-    private var header: some View {
-        HStack(spacing: 8) {
-            Image(systemName: state.display.isBuiltIn ? "laptopcomputer" : "display")
-            Text(state.display.name).font(.headline).lineLimit(1)
-            Spacer()
-            Menu {
-                ForEach(state.supportedMethods, id: \.self) { method in
-                    Toggle(label(for: method), isOn: Binding(
-                        get: { state.brightnessMethod == method },
-                        set: { if $0 { state.setBrightnessMethod(method) } }
-                    ))
-                }
-                if state.brightnessMethod != .software {
-                    Divider()
-                    Toggle("Combined: Dim to Black Below Minimum", isOn: Binding(get: { state.combined }, set: state.setCombined))
-                }
-            } label: {
-                Text(label(for: state.brightnessMethod))
+            if let volume = state.volume {
+                LabeledSlider(
+                    title: "Volume",
+                    valueText: state.volumeDetail,
+                    icon: state.muted ? "speaker.slash.fill" : "speaker.wave.2.fill",
+                    iconAction: { state.setMuted(!state.muted) },
+                    value: Binding(get: { volume }, set: state.setVolume)
+                )
             }
-            .menuStyle(.button)
-            .buttonStyle(.borderless)
-            .fixedSize()
-            .font(.caption)
-            .help("How brightness is changed on this display")
+            if !state.resolutionChoices.isEmpty {
+                ResolutionMenu(state: state)
+            }
+            if !state.display.isBuiltIn {
+                hiDPIToggle
+            }
+            controls
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
-        .background(RoundedRectangle(cornerRadius: 9, style: .continuous).fill(Color.primary.opacity(0.08)))
     }
 
     /// Takes effect immediately; no password, no restart.
@@ -229,14 +508,6 @@ struct DisplaySection: View {
     private var inputLabel: String {
         guard let input = state.input else { return "Input" }
         return InputSource(vcpValue: input)?.description ?? String(format: "Input 0x%02X", input)
-    }
-
-    private func label(for method: BrightnessMethod) -> String {
-        switch method {
-        case .native: "Native"
-        case .ddc: "DDC"
-        case .software: "Software"
-        }
     }
 }
 

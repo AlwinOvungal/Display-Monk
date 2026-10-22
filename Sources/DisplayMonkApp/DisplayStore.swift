@@ -10,15 +10,36 @@ final class DisplayStore: ObservableObject {
     static let shared = DisplayStore()
 
     @Published private(set) var displays: [DisplayState] = []
+    @Published private(set) var sync = BrightnessSync(isEnabled: Preferences.syncBrightness)
+    /// Every display's brightness, republished so views can tell whether synced displays match.
+    @Published private(set) var brightnessLevels: [CGDirectDisplayID: Double] = [:]
     private var lastRefresh = Date.distantPast
+    private var levelObservers: [AnyCancellable] = []
+    private var followWork: DispatchWorkItem?
 
     private init() {}
 
     func reload() {
         SoftwareDimmer.reapply()
         VirtualMirror.pruneDisconnected()
+        let previous = Set(displays.map(\.display.persistentKey))
         displays = DisplayManager.shared.controllers().map(DisplayState.init)
-        displays.forEach { $0.refresh() }
+        observeLevels()
+        // Displays that just connected (all of them at launch) join a running sync once their
+        // brightness has been read. Displays that stayed connected get no writes here.
+        let newcomers = displays.filter { !previous.contains($0.display.persistentKey) }
+        let group = DispatchGroup()
+        for state in displays {
+            var onBrightness: ((Double) -> Void)?
+            if newcomers.contains(where: { $0 === state }) {
+                group.enter()
+                onBrightness = { _ in group.leave() }
+            }
+            state.refresh(onBrightness: onBrightness)
+        }
+        if !newcomers.isEmpty {
+            group.notify(queue: .main) { [weak self] in self?.syncNewcomers(newcomers) }
+        }
         lastRefresh = Date()
         applyHiDPIPreferences()
     }
@@ -80,6 +101,89 @@ final class DisplayStore: ObservableObject {
     var displayUnderMouse: DisplayState? {
         let id = NSScreen.underMouse?.displayID
         return displays.first { $0.display.modeTarget == id } ?? displays.first { $0.display.isMain }
+    }
+
+    // MARK: Brightness sync
+
+    var canSync: Bool { displays.count > 1 }
+    var isSyncActive: Bool { sync.isEnabled && canSync }
+    var isSyncMatched: Bool { BrightnessSync.isMatched(brightnessLevels.values) }
+
+    /// Brightness changes a person makes, from the menu or the brightness keys. With sync on,
+    /// the other displays follow. They are written directly, never through this method, so a
+    /// change can't bounce back.
+    func setBrightness(_ value: Double, for state: DisplayState) {
+        state.setBrightness(value)
+        guard isSyncActive else { return }
+        apply(sync.follow(state.id, changedTo: value, levels: levels))
+    }
+
+    /// Turning sync on matches every display to the one under the pointer, where the menu bar
+    /// was clicked. Turning it off changes nothing: each display keeps its current level.
+    func setSyncEnabled(_ enabled: Bool) {
+        guard enabled != sync.isEnabled else { return }
+        sync.isEnabled = enabled
+        Preferences.syncBrightness = enabled
+        if enabled { matchAll() }
+    }
+
+    /// Brings drifted displays back together, to the level of the display under the pointer.
+    func matchAll() {
+        guard isSyncActive, let reference = displayUnderMouse ?? displays.first else { return }
+        apply(sync.match(levels: levels, to: reference.id))
+    }
+
+    /// macOS changes native displays (MacBook, Apple displays) itself when their brightness
+    /// keys are pressed. Once the change has settled, the other displays follow whichever
+    /// native display changed.
+    func followSystemBrightnessChange() {
+        guard isSyncActive else { return }
+        followWork?.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            guard let self, isSyncActive else { return }
+            for state in displays where state.brightnessMethod == .native {
+                let before = state.brightness
+                state.readBrightness { [weak self, weak state] level in
+                    guard let self, let state, isSyncActive, abs(level - before) > BrightnessSync.tolerance,
+                          displays.contains(where: { $0 === state }) else { return }
+                    apply(sync.follow(state.id, changedTo: level, levels: levels))
+                }
+            }
+        }
+        followWork = work
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: work)
+    }
+
+    private var levels: [CGDirectDisplayID: Double] {
+        Dictionary(displays.map { ($0.id, $0.brightness) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    private func apply(_ writes: [CGDirectDisplayID: Double]) {
+        for (id, level) in writes {
+            displays.first { $0.id == id }?.setBrightness(level)
+        }
+    }
+
+    private func syncNewcomers(_ newcomers: [DisplayState]) {
+        guard isSyncActive else { return }
+        let connected = newcomers.filter { state in displays.contains { $0 === state } }
+        guard !connected.isEmpty else { return }
+        let newIDs = Set(connected.map(\.id))
+        // Prefer a display that stayed connected; at launch, the one under the pointer.
+        let pointer = displayUnderMouse
+        let reference = pointer.flatMap { newIDs.contains($0.id) ? nil : $0 }
+            ?? displays.first { !newIDs.contains($0.id) }
+            ?? pointer
+            ?? displays.first
+        guard let reference else { return }
+        apply(sync.matchNewcomers(newIDs, levels: levels, reference: reference.id))
+    }
+
+    private func observeLevels() {
+        levelObservers = displays.map { state in
+            state.$brightness.sink { [weak self] level in self?.brightnessLevels[state.id] = level }
+        }
+        brightnessLevels = levels
     }
 }
 
@@ -153,7 +257,9 @@ final class DisplayState: ObservableObject, Identifiable {
 
     // MARK: Reading
 
-    func refresh() {
+    /// Re-reads everything. `onBrightness` is called once on the main thread when the
+    /// brightness is known (or, while displays sleep, with the current value).
+    func refresh(onBrightness: ((Double) -> Void)? = nil) {
         refreshModes()
         refreshHiDPI()
         pendingLock.lock()
@@ -168,8 +274,14 @@ final class DisplayState: ObservableObject, Identifiable {
         if software < 1 || method == .software {
             enqueue("brightness.software", value: software, interval: 0) { [id] in SoftwareDimmer.setLevel(software, for: id) }
         }
-        if method == .software { brightness = software }
-        guard !DDCGate.shared.isPaused else { return }
+        if method == .software {
+            brightness = software
+            onBrightness?(software)
+        }
+        guard !DDCGate.shared.isPaused else {
+            if method != .software { onBrightness?(brightness) }
+            return
+        }
 
         queue.async { [controller] in
             let hardware = method == .software ? nil : controller.brightness(using: method)
@@ -181,10 +293,11 @@ final class DisplayState: ObservableObject, Identifiable {
             DispatchQueue.main.async {
                 if method != .software {
                     if let hardware {
-                        self.brightness = combined ? CombinedBrightness.level(hardware: hardware, software: software) : hardware
+                        self.brightness = Self.level(hardware: hardware, combined: combined, saved: saved)
                     } else if let saved {
                         self.brightness = saved
                     }
+                    onBrightness?(self.brightness)
                 }
                 self.contrast = contrast
                 self.volume = volume
@@ -192,6 +305,33 @@ final class DisplayState: ObservableObject, Identifiable {
                 self.input = input
             }
         }
+    }
+
+    /// Re-reads only the brightness, after macOS changed it (native displays' keys).
+    func readBrightness(_ completion: @escaping (Double) -> Void) {
+        let method = brightnessMethod
+        guard method != .software, !DDCGate.shared.isPaused else {
+            completion(brightness)
+            return
+        }
+        let combined = isCombined
+        let saved = Settings.double(.brightness, for: display)
+        queue.async { [controller] in
+            let hardware = controller.brightness(using: method)
+            DispatchQueue.main.async {
+                if let hardware {
+                    self.brightness = Self.level(hardware: hardware, combined: combined, saved: saved)
+                }
+                completion(self.brightness)
+            }
+        }
+    }
+
+    /// The slider level for a backlight reading. In combined mode the saved software part is
+    /// added back, since it can't be read from the display.
+    private static func level(hardware: Double, combined: Bool, saved: Double?) -> Double {
+        guard combined else { return hardware }
+        return CombinedBrightness.level(hardware: hardware, software: CombinedBrightness.components(for: saved ?? 1).software)
     }
 
     func refreshModes() {
@@ -208,10 +348,6 @@ final class DisplayState: ObservableObject, Identifiable {
     }
 
     // MARK: Derived values
-
-    var brightnessTitle: String {
-        isCombined ? "Brightness (Combined)" : "Brightness"
-    }
 
     /// Badge text for the on-screen display, e.g. "40%" or "12% Min HW" once the backlight is
     /// at its minimum and the rest is software dimming.
@@ -605,6 +741,7 @@ enum Preferences {
     static let brightnessKeysKey = "brightnessKeysControlExternalDisplays"
     static let volumeKeysKey = "volumeKeysControlDisplaySpeakers"
     static let showOSDKey = "showOSD"
+    static let syncBrightnessKey = "syncBrightness"
 
     /// One-time clean-ups of settings written by earlier versions.
     static func migrate() {
@@ -619,10 +756,15 @@ enum Preferences {
     }
 
     static func registerDefaults() {
-        UserDefaults.standard.register(defaults: [brightnessKeysKey: false, volumeKeysKey: false, showOSDKey: true])
+        UserDefaults.standard.register(defaults: [brightnessKeysKey: false, volumeKeysKey: false, showOSDKey: true, syncBrightnessKey: false])
     }
 
     static var brightnessKeys: Bool { UserDefaults.standard.bool(forKey: brightnessKeysKey) }
     static var volumeKeys: Bool { UserDefaults.standard.bool(forKey: volumeKeysKey) }
     static var showOSD: Bool { UserDefaults.standard.bool(forKey: showOSDKey) }
+
+    static var syncBrightness: Bool {
+        get { UserDefaults.standard.bool(forKey: syncBrightnessKey) }
+        set { UserDefaults.standard.set(newValue, forKey: syncBrightnessKey) }
+    }
 }

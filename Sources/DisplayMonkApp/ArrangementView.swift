@@ -12,15 +12,20 @@ struct ArrangementSection: View {
     var body: some View {
         let displays = store.displays
         let selected = displays.first { $0.id == selectedID } ?? displays.first { !$0.display.isBuiltIn } ?? displays.first
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Arrangement").font(.callout).foregroundStyle(.secondary)
-            ArrangementPreview(displays: displays, selectedID: selected?.id) { selectedID = $0 }
-                .frame(height: 104)
-            if let selected {
-                controls(for: selected)
+        VStack(alignment: .leading, spacing: 4) {
+            Text("Arrangement")
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 8)
+            VStack(alignment: .leading, spacing: 8) {
+                ArrangementPreview(displays: displays, selectedID: selected?.id) { selectedID = $0 }
+                    .frame(height: 96)
+                if let selected {
+                    controls(for: selected)
+                }
             }
+            .monkPanel(padding: 10)
         }
-        .padding(.horizontal, 4)
     }
 
     @ViewBuilder private func controls(for selected: DisplayState) -> some View {
@@ -28,7 +33,7 @@ struct ArrangementSection: View {
             if !selected.display.isBuiltIn, let reference = store.arrangementReference(for: selected) {
                 let current = selected.placement(relativeTo: reference)
                 let side = current?.0 ?? Arrangement.nearestPlacement(of: selected.frame, relativeTo: reference.frame)
-                let referenceName = shortName(reference)
+                let referenceName = arrangementName(reference)
                 ForEach([Placement.left, .above, .right, .below], id: \.self) { placement in
                     IconButton(icon: arrow(for: placement), isOn: current?.0 == placement, help: positionLabel(placement, referenceName)) {
                         selected.move(placement, current?.1 ?? .center, relativeTo: reference)
@@ -41,13 +46,13 @@ struct ArrangementSection: View {
                     }
                 }
             } else {
-                Text(shortName(selected)).font(.caption).foregroundStyle(.secondary)
+                Text(arrangementName(selected)).font(.caption).foregroundStyle(.secondary)
             }
             Spacer(minLength: 0)
             if !selected.display.isMain {
                 Button("Set as Main") { selected.makeMain(among: store.displays) }
                     .controlSize(.small)
-                    .help("Moves the menu bar and Dock to \(shortName(selected))")
+                    .help("Moves the menu bar and Dock to \(arrangementName(selected))")
             }
         }
     }
@@ -82,8 +87,11 @@ struct ArrangementSection: View {
     }
 }
 
-func shortName(_ state: DisplayState) -> String {
-    state.display.isBuiltIn ? "MacBook" : state.display.name
+/// "MacBook" for the built-in display; long names are shortened to fit the menu.
+func arrangementName(_ state: DisplayState) -> String {
+    guard !state.display.isBuiltIn else { return "MacBook" }
+    let name = state.display.name
+    return name.count > 16 ? String(name.prefix(15)).trimmingCharacters(in: .whitespaces) + "…" : name
 }
 
 private struct IconButton: View {
@@ -99,7 +107,7 @@ private struct IconButton: View {
                 .frame(width: 24, height: 22)
                 .background(
                     RoundedRectangle(cornerRadius: 6, style: .continuous)
-                        .fill(isOn ? Color.accentColor.opacity(0.3) : Color.primary.opacity(0.07))
+                        .fill(isOn ? Color.monkSaffron.opacity(0.3) : Color.primary.opacity(0.07))
                 )
                 .contentShape(Rectangle())
         }
@@ -129,14 +137,14 @@ private struct ArrangementPreview: View {
             ZStack(alignment: .topLeading) {
                 ForEach(displays) { state in
                     let frame = state.frame
-                    DisplayBox(name: shortName(state), isMain: state.display.isMain, isSelected: state.id == selectedID)
+                    DisplayBox(name: arrangementName(state), isMain: state.display.isMain, isSelected: state.id == selectedID)
                         .frame(width: CGFloat(max(4, frame.width * scale - 2)), height: CGFloat(max(4, frame.height * scale - 2)))
                         .offset(x: CGFloat(offsetX + (frame.x - minX) * scale + 1), y: CGFloat(offsetY + (frame.y - minY) * scale + 1))
                         .onTapGesture { onSelect(state.id) }
                 }
             }
         }
-        .background(RoundedRectangle(cornerRadius: 10, style: .continuous).fill(Color.primary.opacity(0.05)))
+        .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.05)))
     }
 }
 
@@ -148,9 +156,9 @@ private struct DisplayBox: View {
     var body: some View {
         ZStack(alignment: .top) {
             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .fill(isSelected ? Color.accentColor.opacity(0.35) : Color.primary.opacity(0.14))
+                .fill(isSelected ? Color.monkSaffron.opacity(0.3) : Color.primary.opacity(0.14))
             RoundedRectangle(cornerRadius: 4, style: .continuous)
-                .strokeBorder(isSelected ? Color.accentColor : Color.primary.opacity(0.25), lineWidth: isSelected ? 1.5 : 1)
+                .strokeBorder(isSelected ? Color.monkSaffron : Color.primary.opacity(0.25), lineWidth: isSelected ? 1.5 : 1)
             if isMain {
                 // The menu bar lives on the main display.
                 Capsule().fill(Color.primary.opacity(0.4)).frame(height: 3).padding(.horizontal, 4).padding(.top, 3)
