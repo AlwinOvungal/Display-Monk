@@ -51,6 +51,8 @@
   --step-3: clamp(1.9rem, 1.4rem + 2vw, 2.6rem);
   --step-4: clamp(2.6rem, 1.6rem + 4.4vw, 4.6rem);
   --radius: 14px;
+  --tint-saffron: #fff1e7; --tint-saffron-line: #ffdcc6; --tint-saffron-chip: #ffe2cf;
+  --tint-honey: #fff7e2; --tint-honey-line: #f8e5b5; --tint-honey-chip: #fdeabb;
   color-scheme: light;
 }
 * { box-sizing: border-box; }
@@ -269,25 +271,73 @@ section { scroll-margin-top: 70px; }
 .section-head h2 { font-size: var(--step-3); font-weight: 800; }
 .section-head p { color: var(--ink-soft); font-size: 1.08rem; }
 
-/* Features: a ruled grid, not cards */
-.features { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: 1px solid var(--line); }
-.feature { padding: 1.8rem 1.6rem 2rem 0; display: grid; gap: .65rem; align-content: start; border-bottom: 1px solid var(--line); }
-.feature + .feature { }
-.features .feature:not(:nth-child(3n+1)) { padding-left: 1.6rem; border-left: 1px solid var(--line); }
-.feature .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: var(--mist); color: var(--ink); }
-.feature .ic svg { width: 22px; height: 22px; }
-.feature h3 { font-size: var(--step-1); font-weight: 700; letter-spacing: -0.01em; margin-top: .4rem; }
-.feature p { color: var(--ink-soft); font-size: .97rem; }
-.feature .unit { font-family: var(--mono); font-size: .76rem; color: var(--muted); }
-@media (max-width: 900px) {
-  .features { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .features .feature:not(:nth-child(3n+1)) { padding-left: 0; border-left: 0; }
-  .features .feature:nth-child(2n) { padding-left: 1.4rem; border-left: 1px solid var(--line); }
+/* Features: a bento grid. The two brightness cards carry soft tints, the command line is the one
+   dark card, and every other card is plain white with its own quietly tinted icon chip. */
+.bento {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px;
+  grid-template-areas: "sync sync bright" "hidpi arrange bright" "monitor keys keys";
 }
-@media (max-width: 560px) {
-  .features { grid-template-columns: 1fr; }
-  .features .feature:nth-child(2n) { padding-left: 0; border-left: 0; }
-  .feature { padding-right: 0; }
+.card {
+  --chip-bg: var(--mist); --chip-fg: var(--ink);
+  position: relative; min-width: 0; display: flex; flex-direction: column; gap: .55rem;
+  padding: 1.6rem; border-radius: 22px; background: var(--surface); border: 1px solid var(--line); overflow: hidden;
+}
+.card h3 { font-size: 1.18rem; font-weight: 700; letter-spacing: -0.015em; }
+.card p { color: var(--ink-soft); font-size: .95rem; max-width: 46ch; }
+.card .unit { font-family: var(--mono); font-size: .74rem; color: var(--muted); margin-top: .15rem; }
+.chip { width: 44px; height: 44px; border-radius: 13px; display: grid; place-items: center; margin-bottom: .45rem; background: var(--chip-bg); color: var(--chip-fg); flex: none; }
+.chip svg { width: 22px; height: 22px; }
+.card.wide { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); align-items: center; gap: 1.6rem 2.2rem; }
+.card.wide > div:first-child { display: flex; flex-direction: column; gap: .55rem; min-width: 0; }
+.c-sync { grid-area: sync; background: linear-gradient(135deg, var(--tint-saffron) 0%, var(--surface) 75%); border-color: var(--tint-saffron-line); --chip-bg: var(--tint-saffron-chip); --chip-fg: var(--saffron-deep); }
+.c-bright { grid-area: bright; background: linear-gradient(180deg, var(--tint-honey) 0%, var(--surface) 70%); border-color: var(--tint-honey-line); --chip-bg: var(--tint-honey-chip); --chip-fg: #a86b12; }
+.c-hidpi { grid-area: hidpi; --chip-bg: #e8ecfb; --chip-fg: #4357b5; }
+.c-arrange { grid-area: arrange; --chip-bg: #e2f3ec; --chip-fg: #1e7657; }
+.c-monitor { grid-area: monitor; --chip-bg: #efe8fb; --chip-fg: #6c46b4; }
+.c-keys { grid-area: keys; background: var(--ink); border-color: var(--ink); color: #eef0f7; --chip-bg: rgba(255,255,255,.1); --chip-fg: var(--halo); }
+.c-keys p { color: #b7bfd6; }
+.c-keys .unit { color: #8f99b9; }
+
+/* Sync: two linked sliders at one level. */
+.v-sync { position: relative; display: grid; gap: 16px; padding: 18px 18px 18px 44px; border-radius: 16px; background: var(--surface); box-shadow: 0 1px 0 var(--line), 0 14px 30px -18px rgba(28,36,56,.35); }
+.vs-link { position: absolute; left: 18px; top: 24px; bottom: 24px; width: 12px; display: flex; flex-direction: column; align-items: center; gap: 4px; color: var(--saffron); }
+.vs-link i { flex: 1; width: 2px; border-radius: 2px; background: currentColor; }
+.vs-link svg { width: 11px; height: 11px; flex: none; }
+.vs-row { display: grid; gap: 8px; }
+.vs-row > span { display: flex; align-items: center; gap: 7px; font-size: .86rem; font-weight: 600; color: var(--ink); }
+.vs-row > span svg { width: 15px; height: 15px; color: var(--muted); }
+.vs-row > span b { margin-left: auto; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.vs-track { position: relative; height: 6px; border-radius: 3px; background: var(--mist); }
+.vs-track i { position: absolute; inset: 0 auto 0 0; width: 62%; border-radius: 3px; background: var(--saffron); }
+.vs-track i::after { content: ""; position: absolute; right: -9px; top: 50%; width: 18px; height: 18px; margin-top: -9px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(28,36,56,.3), 0 0 0 .5px rgba(28,36,56,.15); }
+
+/* Brightness: one slider, backlight first, then software dimming to black. */
+.v-scale { margin-top: auto; padding-top: 1rem; display: grid; grid-template-columns: 30px 1fr; gap: 14px; height: 210px; }
+.vb-bar { position: relative; border-radius: 10px; background: linear-gradient(180deg, #fffdf4 0%, #ffd56b 45%, #c98a2b 75%, #1c2438 100%); box-shadow: inset 0 0 0 1px rgba(28,36,56,.08); }
+.vb-bar::after { content: ""; position: absolute; left: -4px; right: -4px; top: 75%; border-top: 2px dashed rgba(28,36,56,.45); }
+.vb-labels { position: relative; font-size: .78rem; color: var(--ink-soft); }
+.vb-labels span { position: absolute; left: 0; display: grid; }
+.vb-labels b { font-weight: 600; color: var(--ink); font-size: .84rem; }
+.vb-labels .l-top { top: 0; }
+.vb-labels .l-min { top: 75%; transform: translateY(calc(-100% - 6px)); }
+.vb-labels .l-low { bottom: 0; }
+
+/* Command line: a small terminal. */
+.v-term { display: grid; gap: 10px; }
+.vt-keys { display: flex; gap: 8px; }
+.vt-keys kbd { display: grid; place-items: center; gap: 2px; width: 46px; height: 42px; border-radius: 9px; background: #283150; box-shadow: inset 0 -2px 0 rgba(0,0,0,.35), 0 0 0 1px rgba(255,255,255,.06); font: 500 .62rem var(--body); color: #aab3cf; }
+.vt-keys kbd svg { width: 14px; height: 14px; color: #eef0f7; }
+.vt-code { margin: 0; padding: 14px 16px; border-radius: 12px; background: #121829; font: .8rem/1.7 var(--mono); color: #d5dbee; overflow-x: auto; white-space: pre; }
+.vt-code .pr { color: var(--saffron); }
+.vt-code .ok { color: #63d48c; }
+
+@media (max-width: 900px) {
+  .bento { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-areas: "sync sync" "bright hidpi" "bright arrange" "monitor monitor" "keys keys"; }
+}
+@media (max-width: 640px) {
+  .bento { grid-template-columns: minmax(0, 1fr); grid-template-areas: "sync" "bright" "hidpi" "arrange" "monitor" "keys"; }
+  .card.wide { grid-template-columns: minmax(0, 1fr); }
+  .card { padding: 1.3rem; }
 }
 
 /* Quote */
@@ -416,6 +466,13 @@ footer nav a:hover { color: var(--ink); }
     <symbol id="i-al-start" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3v18" stroke-linecap="round"/><rect x="7" y="6" width="12" height="4" rx="1"/><rect x="7" y="14" width="8" height="4" rx="1"/></symbol>
     <symbol id="i-al-center" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18" stroke-linecap="round"/><rect x="5" y="6" width="14" height="4" rx="1"/><rect x="7" y="14" width="10" height="4" rx="1"/></symbol>
     <symbol id="i-al-end" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 3v18" stroke-linecap="round"/><rect x="5" y="6" width="12" height="4" rx="1"/><rect x="9" y="14" width="8" height="4" rx="1"/></symbol>
+    <symbol id="c-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.9 4.9l1.4 1.4m11.4 11.4 1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></symbol>
+    <symbol id="c-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+    <symbol id="c-hidpi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3.5" width="20" height="13.5" rx="2.2"/><path d="M8 21h8M12 17v4"/><path d="M12 6.8l.95 2.2 2.2.95-2.2.95-.95 2.2-.95-2.2-2.2-.95 2.2-.95z" fill="currentColor" stroke-width="1"/></symbol>
+    <symbol id="c-arrange" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="2" y="10" width="11" height="8" rx="1.6"/><rect x="13" y="5" width="9" height="6.5" rx="1.6"/><path d="M5 21h5" stroke-linecap="round"/></symbol>
+    <symbol id="c-sliders" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 4h-7M10 4H3M21 12h-9M8 12H3M21 20h-5M12 20H3M14 2v4M8 10v4M16 18v4"/></symbol>
+    <symbol id="c-terminal" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="m7.5 10 2.5 2.5-2.5 2.5M12.5 15.5h4"/></symbol>
+    <symbol id="i-sunmin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="3.5"/><path d="M12 5v.5m0 13v.5M5 12h.5m13 0h.5M7 7l.4.4m9.2 9.2.4.4M7 17l.4-.4m9.2-9.2.4-.4"/></symbol>
     <symbol id="i-yes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
     <symbol id="i-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 12h10"/></symbol>
   </defs>
@@ -573,43 +630,71 @@ footer nav a:hover { color: var(--ink); }
         <h2>Everything your displays need, and nothing they don't.</h2>
         <p>macOS hides most display settings or leaves them out. Display Monk brings them into one quiet menu.</p>
       </div>
-      <div class="features">
-        <div class="feature">
-          <div class="ic"><svg><use href="#i-sun"/></svg></div>
+      <div class="bento">
+        <article class="card wide c-sync">
+          <div>
+            <div class="chip"><svg><use href="#c-link"/></svg></div>
+            <h3>Sync brightness</h3>
+            <p>Move one slider and every display follows, from either screen or with the brightness keys. Turn it off and each display is on its own again.</p>
+            <span class="unit">one level · every display · both ways</span>
+          </div>
+          <div class="v-sync" aria-hidden="true">
+            <div class="vs-link"><i></i><svg><use href="#i-link"/></svg><i></i></div>
+            <div class="vs-row"><span><svg><use href="#i-laptop"/></svg>Built-in Retina Display<b>62%</b></span><div class="vs-track"><i></i></div></div>
+            <div class="vs-row"><span><svg><use href="#i-monitor"/></svg>LG HDR QHD<b>62%</b></span><div class="vs-track"><i></i></div></div>
+          </div>
+        </article>
+
+        <article class="card c-bright">
+          <div class="chip"><svg><use href="#c-sun"/></svg></div>
           <h3>Brightness for every screen</h3>
           <p>Native brightness for Apple displays, DDC for external monitors, and software dimming for the rest. Combined mode keeps dimming past the backlight's minimum, all the way to black.</p>
           <span class="unit">native · DDC/CI · gamma · down to black</span>
-        </div>
-        <div class="feature">
-          <div class="ic"><svg><use href="#i-link"/></svg></div>
-          <h3>Sync brightness</h3>
-          <p>Move one slider and every display follows, from either screen or with the brightness keys. Turn it off and each display is on its own again.</p>
-          <span class="unit">one level · every display · both ways</span>
-        </div>
-        <div class="feature">
-          <div class="ic"><svg><use href="#i-modes"/></svg></div>
+          <div class="v-scale" aria-hidden="true">
+            <div class="vb-bar"></div>
+            <div class="vb-labels">
+              <span class="l-top"><b>Backlight</b>top three quarters of the slider</span>
+              <span class="l-min"><b>Backlight minimum</b></span>
+              <span class="l-low"><b>Software dimming</b>bottom quarter, down to black</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="card c-hidpi">
+          <div class="chip"><svg><use href="#c-hidpi"/></svg></div>
           <h3>HiDPI on external displays</h3>
           <p>Sharp Retina-style sizes on monitors macOS leaves blurry. It applies instantly with no restart, and you can make it permanent.</p>
           <span class="unit">from 1600 × 900 on 2K · about 110 ppi on 4K</span>
-        </div>
-        <div class="feature">
-          <div class="ic"><svg><use href="#i-arrange"/></svg></div>
+        </article>
+
+        <article class="card c-arrange">
+          <div class="chip"><svg><use href="#c-arrange"/></svg></div>
           <h3>Arrangement &amp; main display</h3>
           <p>Put each external display left, right, above or below your MacBook, align it, and choose which screen gets the menu bar and Dock.</p>
           <span class="unit">position · align · set as main</span>
-        </div>
-        <div class="feature">
-          <div class="ic"><svg><use href="#i-layers"/></svg></div>
+        </article>
+
+        <article class="card c-monitor">
+          <div class="chip"><svg><use href="#c-sliders"/></svg></div>
           <h3>Contrast, volume &amp; input</h3>
           <p>Change contrast, speaker volume and mute over DDC, and switch inputs between HDMI, DisplayPort and USB-C without touching the monitor.</p>
           <span class="unit">VCP 0x12 · 0x62 · 0x60</span>
-        </div>
-        <div class="feature">
-          <div class="ic"><svg><use href="#i-key"/></svg></div>
-          <h3>Keys &amp; command line</h3>
-          <p>Your brightness and volume keys control the display under the pointer, with an on-screen display. Script everything with the displaymonk CLI.</p>
-          <span class="unit">displaymonk brightness 60 -d external</span>
-        </div>
+        </article>
+
+        <article class="card wide c-keys">
+          <div>
+            <div class="chip"><svg><use href="#c-terminal"/></svg></div>
+            <h3>Keys &amp; command line</h3>
+            <p>Your brightness and volume keys control the display under the pointer, with an on-screen display. Script everything with the displaymonk CLI.</p>
+            <span class="unit">brightness &amp; volume keys · displaymonk CLI</span>
+          </div>
+          <div class="v-term" aria-hidden="true">
+            <div class="vt-keys"><kbd><svg><use href="#i-sunmin"/></svg>F1</kbd><kbd><svg><use href="#c-sun"/></svg>F2</kbd></div>
+<pre class="vt-code"><span class="pr">$</span> displaymonk brightness 60 -d external
+<span class="pr">$</span> displaymonk input hdmi1
+<span class="ok">✓</span> LG HDR QHD → HDMI 1</pre>
+          </div>
+        </article>
       </div>
     </div>
   </section>
