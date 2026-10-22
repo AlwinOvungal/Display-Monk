@@ -757,13 +757,19 @@ enum Preferences {
     /// One-time clean-ups of settings written by earlier versions.
     static func migrate() {
         let defaults = UserDefaults.standard
-        guard defaults.integer(forKey: "settingsVersion") < 2 else { return }
-        // HiDPI sizes picked while testing earlier builds would override the 1600x900 default.
-        for key in defaults.dictionaryRepresentation().keys
-            where key.hasPrefix("display.") && (key.hasSuffix(".hiDPISize") || key.hasSuffix(".virtualHiDPI")) {
-            defaults.removeObject(forKey: key)
+        let version = defaults.integer(forKey: "settingsVersion")
+        guard version < 3 else { return }
+        if version < 2 {
+            // HiDPI sizes picked while testing earlier builds would override the 1600x900 default.
+            for key in defaults.dictionaryRepresentation().keys
+                where key.hasPrefix("display.") && (key.hasSuffix(".hiDPISize") || key.hasSuffix(".virtualHiDPI")) {
+                defaults.removeObject(forKey: key)
+            }
         }
-        defaults.set(2, forKey: "settingsVersion")
+        // Every section starts closed; from here on, sections stay as the user leaves them.
+        defaults.removeObject(forKey: "expandedDisplays")
+        defaults.removeObject(forKey: "arrangementExpanded")
+        defaults.set(3, forKey: "settingsVersion")
     }
 
     static func registerDefaults() {
