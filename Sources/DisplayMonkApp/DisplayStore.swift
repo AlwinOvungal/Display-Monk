@@ -88,6 +88,13 @@ final class DisplayStore: ObservableObject {
     }
 
     /// The display other displays are placed relative to: the built-in one, else the main one.
+    /// Re-reads every display's position right after a move, so the preview follows at once
+    /// instead of waiting for the reconfiguration reload.
+    func arrangementDidChange() {
+        displays.forEach { $0.refreshFrame() }
+        objectWillChange.send()
+    }
+
     func arrangementReference(for state: DisplayState) -> DisplayState? {
         let others = displays.filter { $0.id != state.id }
         return others.first { $0.display.isBuiltIn } ?? others.first { $0.display.isMain } ?? others.first
@@ -338,6 +345,10 @@ final class DisplayState: ObservableObject, Identifiable {
         modes = DisplayModes.available(for: modeTarget)
         currentMode = DisplayModes.current(for: modeTarget)
         rotation = DisplayRotation.current(for: modeTarget)
+        refreshFrame()
+    }
+
+    func refreshFrame() {
         frame = DisplayArrangement.rect(of: display)
     }
 
