@@ -37,7 +37,14 @@ struct MenuView: View {
         .padding(14)
         .frame(width: 340)
         .tint(.monkSaffron)
-        .background(VisualEffectBackground())
+        .background {
+            // A light tint over the blur keeps the panel translucent without washing out over
+            // bright windows behind it, so secondary text stays readable.
+            ZStack {
+                VisualEffectBackground()
+                Color(nsColor: .windowBackgroundColor).opacity(0.45)
+            }
+        }
         .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(RoundedRectangle(cornerRadius: 18, style: .continuous).strokeBorder(Color.primary.opacity(0.12)))
         .onReceive(NotificationCenter.default.publisher(for: .menuWillShow)) { _ in
@@ -465,10 +472,11 @@ struct DisplayControls: View {
                     Divider()
                     Button("Reset Display to Native Resolution") { DispatchQueue.main.async { state.resetDisplay() } }
                 } label: {
-                    Image(systemName: "ellipsis.circle")
+                    Image(systemName: "ellipsis.circle").foregroundStyle(.secondary)
                 }
                 .menuStyle(.button)
-                .buttonStyle(.borderless)
+                .menuIndicator(.hidden)
+                .buttonStyle(.plain)
                 .fixedSize()
                 .help("Permanent HiDPI works without Display Monk running, from your next restart")
             }
@@ -481,28 +489,38 @@ struct DisplayControls: View {
     private var controls: some View {
         HStack(spacing: 8) {
             if state.refreshChoices.count > 1 {
-                Menu(state.currentMode?.refreshLabel ?? "Hz") {
+                Menu {
                     ForEach(state.refreshChoices, id: \.self) { mode in
                         Button(mode.refreshLabel) { state.apply(mode) }
                     }
+                } label: {
+                    PillLabel(text: state.currentMode?.refreshLabel ?? "Hz")
                 }
-                .fixedSize()
+                .pillMenuStyle()
+                .help("Refresh rate")
             }
-            Menu("\(state.rotation)°") {
+            Menu {
                 ForEach([0, 90, 180, 270], id: \.self) { degrees in
                     Button("\(degrees)°") { state.rotate(to: degrees) }
                 }
+            } label: {
+                PillLabel(text: "\(state.rotation)°")
             }
-            .fixedSize()
+            .pillMenuStyle()
+            .help("Rotation")
             if state.hasDDC {
-                Menu(inputLabel) {
+                Menu {
                     ForEach(InputSource.allCases, id: \.self) { source in
                         Button(source.description) { state.setInput(source.rawValue) }
                     }
+                } label: {
+                    PillLabel(text: inputLabel)
                 }
+                .pillMenuStyle()
+                .help("Input source")
             }
         }
-        .controlSize(.small)
+        .font(.callout)
     }
 
     private var inputLabel: String {
@@ -574,11 +592,9 @@ struct ResolutionMenu: View {
                     }
                 }
             } label: {
-                Text(currentLabel).monospacedDigit()
+                PillLabel(text: currentLabel)
             }
-            .menuStyle(.button)
-            .buttonStyle(.borderless)
-            .fixedSize()
+            .pillMenuStyle()
         }
         .font(.callout)
     }
@@ -605,6 +621,37 @@ struct ResolutionMenu: View {
     private func isCurrent(_ mode: ModeDescriptor) -> Bool {
         guard let current = state.currentMode else { return false }
         return current.width == mode.width && current.height == mode.height && current.isHiDPI == mode.isHiDPI
+    }
+}
+
+/// The current value of a dropdown, in normal text colour inside a soft pill, so it stays
+/// readable on the translucent panel (tinted text did not).
+struct PillLabel: View {
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 4) {
+            Text(text)
+                .monospacedDigit()
+                .foregroundStyle(.primary)
+            Image(systemName: "chevron.up.chevron.down")
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(.secondary)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 3)
+        .background(Capsule().fill(Color.primary.opacity(0.1)))
+        .contentShape(Capsule())
+    }
+}
+
+extension View {
+    /// Shows a `Menu`'s label as drawn (no tint, no system indicator), for `PillLabel`.
+    func pillMenuStyle() -> some View {
+        menuStyle(.button)
+            .menuIndicator(.hidden)
+            .buttonStyle(.plain)
+            .fixedSize()
     }
 }
 
