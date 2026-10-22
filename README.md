@@ -54,7 +54,7 @@ scripts/bundle.sh           # universal release: build/Display Monk.app and buil
 
 ### Releasing
 
-Publish a release on GitHub with a tag like `v0.1.3`. The **Release** workflow builds the universal
+Publish a release on GitHub with a tag like `v0.1.4`. The **Release** workflow builds the universal
 app with that version and attaches `DisplayMonk.dmg`, `DisplayMonk.zip` and `displaymonk` to it. To rebuild the files
 for an existing release, run the workflow from **Actions → Release → Run workflow** with its tag.
 
