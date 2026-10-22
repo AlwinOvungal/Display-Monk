@@ -199,8 +199,8 @@ struct MenuView: View {
 
 // MARK: - Brightness
 
-/// One slider per display, plus Sync Brightness. The rows look the same synced or not, so
-/// switching sync doesn't move anything; a saffron link joins the sliders while it's on.
+/// One slider per display, plus Sync Brightness. The rows line up with the sun icon; while sync
+/// is on, a saffron link between the sliders shows its status.
 struct BrightnessPanel: View {
     @ObservedObject var store: DisplayStore
 
@@ -221,141 +221,49 @@ struct BrightnessPanel: View {
                     .help("Keep all displays at the same brightness")
                 }
             }
-            VStack(spacing: 12) {
-                ForEach(store.displays) { state in
+            VStack(spacing: store.isSyncActive ? 6 : 12) {
+                ForEach(Array(store.displays.enumerated()), id: \.element.id) { index, state in
+                    if index > 0, store.isSyncActive {
+                        SyncLink(store: store)
+                            .transition(.opacity)
+                    }
                     BrightnessRow(state: state, store: store)
                 }
             }
-            // Room for the link bracket only while sync is on; otherwise the rows line up with
-            // the sun icon.
-            .padding(.leading, store.isSyncActive ? 20 : 0)
-            .overlay(alignment: .leading) {
-                if store.canSync {
-                    LinkBracket(isActive: store.isSyncActive)
-                }
-            }
-            if store.canSync || store.sync.isEnabled {
-                caption
+            if store.sync.isEnabled, !store.canSync {
+                Text("Sync is on. Connect another display to use it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .monkPanel()
     }
-
-    private var caption: some View {
-        HStack(spacing: 6) {
-            if store.isSyncActive {
-                if store.isSyncMatched {
-                    StatusDot(color: .monkSaffron)
-                    Text("Linked across \(store.displays.count) displays · move any slider")
-                } else {
-                    StatusDot(color: .orange)
-                    Text("Not matched")
-                    Spacer()
-                    Button("Match") { store.matchAll() }
-                        .buttonStyle(.link)
-                        .help("Set every display to the brightness of the one under the pointer")
-                }
-            } else if store.canSync {
-                Text("Each display is adjusted on its own")
-            } else {
-                Text("Sync is on. Connect another display to use it.")
-            }
-        }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .frame(minHeight: 16)
-    }
 }
 
-struct BrightnessRow: View {
-    @ObservedObject var state: DisplayState
+/// Sits between the sliders while Sync Brightness is on: linked, or not matched with a way to
+/// match them.
+struct SyncLink: View {
     @ObservedObject var store: DisplayStore
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Image(systemName: state.display.isBuiltIn ? "laptopcomputer" : "display")
-                    .foregroundStyle(.secondary)
-                    .frame(width: 18)
-                Text(state.display.name)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .help(state.display.name)
-                BrightnessMethodMenu(state: state)
-                Spacer(minLength: 6)
-                Text(percentText(state.brightness))
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            }
-            .font(.callout)
-            Slider(value: Binding(get: { state.brightness }, set: { store.setBrightness($0, for: state) }), in: 0 ... 1)
-                .controlSize(.small)
-                .accessibilityLabel("\(state.display.name) brightness")
-            if state.brightnessMethod == .software {
-                Text("Software dimming: darkens the image only")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-        }
-    }
-}
-
-/// The small badge naming how brightness is changed, with the choices behind it.
-struct BrightnessMethodMenu: View {
-    @ObservedObject var state: DisplayState
-
-    var body: some View {
-        Menu {
-            ForEach(state.supportedMethods, id: \.self) { method in
-                Toggle(label(for: method), isOn: Binding(
-                    get: { state.brightnessMethod == method },
-                    set: { if $0 { state.setBrightnessMethod(method) } }
-                ))
-            }
-            if state.brightnessMethod != .software {
-                Divider()
-                Toggle("Combined: Dim to Black Below Minimum", isOn: Binding(get: { state.combined }, set: state.setCombined))
-            }
-        } label: {
-            Text(label(for: state.brightnessMethod))
-        }
-        .menuStyle(.button)
-        .menuIndicator(.hidden)
-        .buttonStyle(.plain)
-        .fixedSize()
-        .font(.caption2.weight(.semibold))
-        .foregroundStyle(.secondary)
-        .padding(.horizontal, 6)
-        .padding(.vertical, 1)
-        .background(Capsule().fill(Color.primary.opacity(0.08)))
-        .help(state.isCombined ? "How brightness is changed: \(label(for: state.brightnessMethod)), then software dimming to black" : "How brightness is changed on this display")
-    }
-
-    private func label(for method: BrightnessMethod) -> String {
-        switch method {
-        case .native: "Native"
-        case .ddc: "DDC"
-        case .software: "Software"
-        }
-    }
-}
-
-/// The link drawn beside synced sliders.
-struct LinkBracket: View {
-    let isActive: Bool
-
-    var body: some View {
-        VStack(spacing: 3) {
-            Capsule().frame(width: 2)
+        let matched = store.isSyncMatched
+        let color = matched ? Color.monkSaffron : Color.orange
+        HStack(spacing: 6) {
+            Capsule().fill(color.opacity(0.35)).frame(height: 1)
             Image(systemName: "link").font(.system(size: 9, weight: .bold))
-            Capsule().frame(width: 2)
+            if matched {
+                Text("Synced")
+            } else {
+                Text("Not matched")
+                Button("Match") { store.matchAll() }
+                    .buttonStyle(.link)
+                    .help("Set every display to the brightness of the one under the pointer")
+            }
+            Capsule().fill(color.opacity(0.35)).frame(height: 1)
         }
-        .foregroundStyle(Color.monkSaffron)
-        .frame(width: 12)
-        .padding(.vertical, 6)
-        .opacity(isActive ? 1 : 0)
-        .animation(.easeInOut(duration: 0.15), value: isActive)
-        .accessibilityHidden(true)
+        .font(.caption.weight(.medium))
+        .foregroundStyle(color)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
