@@ -101,11 +101,13 @@ p { margin: 0; }
 @media (max-width: 760px) { .nav-links { display: none; } .nav .btn { margin-left: auto; } }
 
 /* ---------- Hero ---------- */
-.hero .wrap { display: grid; grid-template-columns: 1fr 1.05fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; padding-block: clamp(2.5rem, 6vw, 5rem) clamp(3rem, 6vw, 5.5rem); }
-.hero-copy { min-width: 0; display: grid; gap: 1.4rem; justify-items: start; }
+.hero .wrap { display: grid; grid-template-columns: 1.1fr 1fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; padding-block: clamp(2.5rem, 6vw, 5rem) clamp(3rem, 6vw, 5.5rem); }
+.hero-copy { container-type: inline-size; min-width: 0; display: grid; gap: 1.4rem; justify-items: start; }
 .mascot { width: clamp(96px, 12vw, 132px); height: auto; animation: breathe 6s ease-in-out infinite; transform-origin: 50% 90%; }
 @keyframes breathe { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.015); } }
-.hero h1 { font-size: var(--step-4); font-weight: 800; letter-spacing: -0.035em; line-height: 1.04; }
+/* Two fixed lines; the size follows the column so the longer line always fits. */
+.hero h1 { font-size: clamp(2rem, .9rem + 3.4vw, 4.2rem); font-size: min(4.2rem, 10.6cqi); font-weight: 800; letter-spacing: -0.035em; line-height: 1.04; justify-self: stretch; }
+.hero h1 span { display: block; white-space: nowrap; }
 .hero h1 em { font-style: normal; color: var(--saffron); }
 .hero .lede { font-size: 1.15rem; color: var(--ink-soft); max-width: 34rem; }
 .cta-row { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
@@ -143,68 +145,118 @@ p { margin: 0; }
 .mb-glyph:focus-visible { outline: 2px solid var(--focus); }
 @media (max-width: 480px) { .menubar .apple span:not(:first-child), .mb-hide { display: none; } }
 
+/* The real Display Monk popover (dark), from MenuView.swift and ArrangementView.swift. */
 .menu {
-  margin: 8px 10px 0 auto; width: min(330px, calc(100% - 20px));
-  background: var(--menu-bg); color: var(--menu-fg);
-  backdrop-filter: blur(24px) saturate(1.4); -webkit-backdrop-filter: blur(24px) saturate(1.4);
-  border-radius: 14px; padding: 14px; font-size: 13px; line-height: 1.35;
-  display: grid; gap: 12px;
-  box-shadow: 0 18px 40px -12px rgba(20,24,40,.45), 0 0 0 .5px rgba(0,0,0,.12);
+  --m-fg: #f1f2f5; --m-dim: rgba(241,242,245,.6); --m-fill: rgba(255,255,255,.065); --m-hover: rgba(255,255,255,.05);
+  --m-line: rgba(255,255,255,.12); --m-track: rgba(255,255,255,.2); --m-pill: rgba(255,255,255,.09);
+  margin: 8px 10px 0 auto; width: min(340px, calc(100% - 20px));
+  background: rgba(50,50,54,.88); color: var(--m-fg); color-scheme: dark;
+  backdrop-filter: blur(30px) saturate(1.5); -webkit-backdrop-filter: blur(30px) saturate(1.5);
+  border-radius: 18px; padding: 14px; display: grid; gap: 12px;
+  font: 13px/1.3 -apple-system, BlinkMacSystemFont, "SF Pro Text", var(--body); letter-spacing: -0.005em;
+  box-shadow: 0 26px 50px -18px rgba(8,10,18,.65), 0 0 0 .5px rgba(0,0,0,.55), inset 0 0 0 .5px rgba(255,255,255,.14);
   transform-origin: 85% 0; transition: transform .18s ease, opacity .18s ease;
 }
 .menu[hidden] { display: grid !important; opacity: 0; transform: scale(.96) translateY(-4px); pointer-events: none; visibility: hidden; }
+.menu svg { width: 16px; height: 16px; flex: none; }
+.menu button, .menu select { font: inherit; color: inherit; }
+.menu :focus-visible { outline: 2px solid var(--saffron); outline-offset: 1px; border-radius: 6px; }
 .pm-head { display: flex; align-items: center; gap: 10px; }
 .pm-head img { width: 30px; height: 30px; border-radius: 7px; }
-.pm-head strong { display: block; font: 600 13px var(--body); }
-.pm-status { display: flex; align-items: center; gap: 5px; font-size: 11.5px; opacity: .65; }
+.pm-head strong { display: block; font-size: 13px; font-weight: 600; }
+.pm-status { display: flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--m-dim); }
 .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex: none; }
-.dot.ok { background: #2fb35a; }
+.dot.ok { background: #32c75a; }
 .dot.sync { background: var(--saffron); }
-.pm-panel { background: rgba(28,36,56,.05); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
+.pm-panel { background: var(--m-fill); border-radius: 12px; padding: 12px; display: grid; gap: 10px; }
 .pm-title { display: flex; align-items: center; gap: 6px; }
-.pm-title > svg { width: 15px; height: 15px; color: var(--saffron); flex: none; }
+.pm-title > svg { color: var(--saffron); }
 .pm-title b { font-weight: 600; flex: 1; }
-.pm-switch { display: flex; align-items: center; gap: 7px; cursor: pointer; font-size: 12.5px; position: relative; }
+.pm-switch { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; position: relative; }
 .pm-switch input { position: absolute; opacity: 0; width: 1px; height: 1px; margin: 0; }
-.pm-switch i { width: 26px; height: 15px; border-radius: 99px; background: rgba(28,36,56,.22); position: relative; transition: background .15s ease; flex: none; }
-.pm-switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.25); transition: transform .15s ease; }
-.pm-switch input:checked + i { background: var(--saffron); }
+.pm-switch i { width: 26px; height: 15px; border-radius: 99px; background: rgba(255,255,255,.22); position: relative; transition: background .15s ease; flex: none; }
+.pm-switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 11px; height: 11px; border-radius: 50%; background: #e9e9ec; box-shadow: 0 1px 2px rgba(0,0,0,.35); transition: transform .15s ease; }
+.pm-switch input:checked + i { background: var(--saffron-deep); }
 .pm-switch input:checked + i::after { transform: translateX(11px); }
-.pm-switch input:focus-visible + i { outline: 2px solid var(--focus); outline-offset: 2px; }
+.pm-switch input:focus-visible + i { outline: 2px solid var(--saffron); outline-offset: 2px; }
 .pm-rows { position: relative; display: grid; gap: 12px; padding-left: 20px; }
 .pm-link { position: absolute; left: 0; top: 6px; bottom: 6px; width: 12px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--saffron); opacity: 0; transition: opacity .15s ease; }
 .pm-link i { flex: 1; width: 2px; border-radius: 2px; background: currentColor; }
-.pm-link svg { width: 10px; height: 10px; flex: none; }
+.pm-link svg { width: 10px; height: 10px; }
 .pm-rows.linked .pm-link { opacity: 1; }
-.pm-row { display: grid; gap: 4px; min-width: 0; }
+.pm-row { display: grid; gap: 6px; min-width: 0; }
 .pm-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
-.pm-line > svg { width: 16px; height: 16px; opacity: .6; flex: none; }
+.pm-line > svg { color: var(--m-dim); }
 .pm-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-.pm-badge { font-size: 10px; font-weight: 600; padding: 1px 6px; border-radius: 99px; background: rgba(28,36,56,.08); opacity: .8; flex: none; }
-.pm-line output { margin-left: auto; font-variant-numeric: tabular-nums; opacity: .65; flex: none; }
-.pm-caption { font-size: 11.5px; opacity: .7; display: flex; align-items: center; gap: 6px; min-height: 16px; margin: 0; }
-.pm-group { display: grid; gap: 4px; }
-.pm-label { font-size: 11.5px; font-weight: 600; opacity: .6; margin: 0 0 0 8px; }
-.pm-display { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 8px; padding: 7px 8px; border-radius: 10px; cursor: pointer; }
-.pm-display:hover, .pm-display[aria-expanded="true"] { background: rgba(28,36,56,.05); }
-.pm-display:focus-visible { outline: 2px solid var(--focus); outline-offset: -2px; }
-.pm-display > svg:first-child { width: 16px; height: 16px; opacity: .6; flex: none; }
-.pm-display span { flex: 1; min-width: 0; display: grid; }
-.pm-display b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pm-display small { font-size: 11.5px; opacity: .6; }
-.pm-display .chev { width: 12px; height: 12px; opacity: .5; transition: transform .2s ease; flex: none; }
-.pm-display[aria-expanded="true"] .chev { transform: rotate(90deg); }
-.pm-more { padding: 2px 8px 8px 32px; }
-.pm-more[hidden] { display: none; }
-.spec { display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; font-size: 12px; margin: 0; }
-.spec dt { opacity: .6; }
-.spec dd { margin: 0; font-family: var(--mono); font-size: 11.5px; }
-input[type="range"] { width: 100%; accent-color: var(--saffron); margin: 0; }
-.pm-foot { display: flex; align-items: center; gap: 2px; border-top: 1px solid var(--menu-sep); padding-top: 10px; font-size: 12.5px; }
-.pm-foot button { all: unset; cursor: pointer; padding: 3px 5px; border-radius: 6px; opacity: .65; display: grid; place-items: center; }
-.pm-foot button:hover { background: var(--menu-hover); opacity: 1; }
-.pm-foot button:focus-visible { outline: 2px solid var(--focus); }
-.pm-foot svg { width: 15px; height: 15px; }
+.pm-badge { font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 99px; background: rgba(255,255,255,.1); color: var(--m-dim); flex: none; }
+.pm-line output, .pm-val { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--m-dim); flex: none; }
+.pm-caption { font-size: 11.5px; color: var(--m-dim); display: flex; align-items: center; gap: 6px; min-height: 16px; margin: 0; }
+.pm-group { display: grid; gap: 5px; }
+.pm-label { font-size: 11.5px; font-weight: 600; color: var(--m-dim); margin: 0 0 0 8px; }
+
+/* macOS-style slider: saffron fill, light knob. JS keeps --p in step with the value. */
+.ms { -webkit-appearance: none; appearance: none; width: 100%; height: 20px; margin: 0; background: transparent; cursor: pointer; --p: 50%; }
+.ms::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: linear-gradient(to right, var(--saffron-deep) var(--p), var(--m-track) var(--p)); }
+.ms::-webkit-slider-thumb { -webkit-appearance: none; width: 19px; height: 19px; margin-top: -7.5px; border-radius: 50%; background: #d4d4d8; box-shadow: 0 1px 3px rgba(0,0,0,.45), inset 0 0 0 .5px rgba(0,0,0,.2); }
+.ms::-moz-range-track { height: 4px; border-radius: 2px; background: var(--m-track); }
+.ms::-moz-range-progress { height: 4px; border-radius: 2px; background: var(--saffron-deep); }
+.ms::-moz-range-thumb { width: 19px; height: 19px; border: 0; border-radius: 50%; background: #d4d4d8; box-shadow: 0 1px 3px rgba(0,0,0,.45); }
+
+/* Display rows */
+.pm-drow { border-radius: 12px; transition: background .15s ease; }
+.pm-drow:hover { background: var(--m-hover); }
+.pm-drow.open { background: var(--m-fill); }
+.pm-dhead { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; border-radius: 12px; }
+.pm-dhead > svg:first-child { color: var(--m-dim); }
+.pm-dhead span { flex: 1; min-width: 0; display: grid; }
+.pm-dhead b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-dhead small { font-size: 11.5px; color: var(--m-dim); font-variant-numeric: tabular-nums; }
+.pm-tag { font-size: 11px; font-weight: 600; color: var(--m-dim); }
+.pm-dhead .chev { width: 12px; height: 12px; color: var(--m-dim); transition: transform .2s ease; }
+.pm-drow.open .chev { transform: rotate(90deg); }
+.pm-ctrls { display: grid; gap: 10px; padding: 0 10px 10px; }
+.pm-ctrls[hidden] { display: none; }
+.pm-lab { display: flex; justify-content: space-between; color: var(--m-dim); }
+.pm-sl { display: flex; align-items: center; gap: 8px; }
+.pm-sl > svg, .pm-sl > button { width: 20px; flex: none; color: var(--m-fg); }
+.pm-sl > button { all: unset; cursor: pointer; display: grid; place-items: center; width: 20px; height: 20px; color: var(--saffron); }
+.pm-sl > button svg { width: 16px; height: 16px; }
+.pm-kv { display: flex; align-items: center; gap: 8px; }
+.pm-kv > svg { width: 20px; }
+.pm-kv .k { color: var(--m-dim); }
+.pm-kv .grow { flex: 1; }
+.pm-pills { display: flex; flex-wrap: wrap; gap: 8px; }
+.pill {
+  -webkit-appearance: none; appearance: none; border: 0; cursor: pointer; border-radius: 99px;
+  background: var(--m-pill) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 10 14'%3E%3Cpath d='M2 5l3-3 3 3M2 9l3 3 3-3' fill='none' stroke='%23c8c9cf' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 9px center / 8px 11px;
+  padding: 4px 24px 4px 11px; font-variant-numeric: tabular-nums;
+}
+.pill:hover { background-color: rgba(255,255,255,.13); }
+.pill option { color: #111; }
+.pm-ellipsis { all: unset; cursor: pointer; display: grid; place-items: center; color: var(--m-dim); }
+.pm-ellipsis svg { width: 18px; height: 18px; }
+
+/* Arrangement */
+.pm-arr { display: grid; gap: 8px; padding: 10px; }
+.pm-stage { position: relative; height: 96px; border-radius: 8px; background: rgba(255,255,255,.05); }
+.pm-box { all: unset; position: absolute; box-sizing: border-box; border-radius: 4px; cursor: pointer; display: block; padding: 0 3px; line-height: var(--bh, 30px); text-align: center; text-overflow: ellipsis; font-size: 9px; font-weight: 600; letter-spacing: -0.01em;
+  background: rgba(255,255,255,.14); box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); transition: left .2s ease, top .2s ease; overflow: hidden; white-space: nowrap; }
+.pm-box.sel { background: rgba(255,122,61,.3); box-shadow: inset 0 0 0 1.5px var(--saffron); }
+.pm-box.main::before { content: ""; position: absolute; top: 3px; left: 4px; right: 4px; height: 3px; border-radius: 2px; background: rgba(255,255,255,.4); }
+.pm-arrbar { display: flex; align-items: center; gap: 5px; min-height: 22px; }
+.pm-place { display: flex; align-items: center; gap: 5px; }
+.pm-place[hidden], .pm-note[hidden] { display: none; }
+.ib { all: unset; cursor: pointer; width: 24px; height: 22px; display: grid; place-items: center; border-radius: 6px; background: rgba(255,255,255,.08); }
+.ib svg { width: 13px; height: 13px; }
+.ib.on { background: rgba(255,122,61,.32); }
+.pm-sep { width: 1px; height: 16px; background: var(--m-line); margin: 0 2px; }
+.pm-btn { all: unset; cursor: pointer; margin-left: auto; font-size: 12px; padding: 2px 9px; border-radius: 6px; background: rgba(255,255,255,.14); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.2); white-space: nowrap; }
+.pm-btn[hidden] { display: none; }
+.pm-note { font-size: 11.5px; color: var(--m-dim); }
+
+.pm-foot { display: flex; align-items: center; gap: 4px; border-top: 1px solid var(--m-line); padding-top: 10px; color: var(--m-dim); }
+.pm-foot button { all: unset; cursor: pointer; padding: 3px 5px; border-radius: 6px; display: grid; place-items: center; }
+.pm-foot button:hover { background: var(--m-hover); color: var(--m-fg); }
 .pm-foot .quit { margin-left: auto; }
 .desk-caption { font-size: .82rem; color: var(--muted); margin-top: .7rem; text-align: center; }
 .alt-dl { font-size: .9rem; color: var(--band-muted); }
@@ -350,6 +402,20 @@ footer nav a:hover { color: var(--ink); }
     <symbol id="i-key" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M8 9l-4 3 4 3m8-6 4 3-4 3M14 5l-4 14"/></symbol>
     <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13.5a4.5 4.5 0 0 0 6.4.3l3-3a4.5 4.5 0 0 0-6.4-6.4l-1.7 1.7"/><path d="M14 10.5a4.5 4.5 0 0 0-6.4-.3l-3 3a4.5 4.5 0 0 0 6.4 6.4l1.7-1.7"/></symbol>
     <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></symbol>
+    <symbol id="i-sunfill" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.2" fill="currentColor"/><path d="M12 2.5v2m0 15v2M2.5 12h2m15 0h2M5.3 5.3l1.4 1.4m10.6 10.6 1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></symbol>
+    <symbol id="i-contrast" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3.5a8.5 8.5 0 0 0 0 17z" fill="currentColor"/></symbol>
+    <symbol id="i-spk" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="M15.5 9a4.5 4.5 0 0 1 0 6M18.3 6.5a8 8 0 0 1 0 11"/></symbol>
+    <symbol id="i-spkx" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z" fill="currentColor"/><path d="m16 9.5 5 5m0-5-5 5"/></symbol>
+    <symbol id="i-resize" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4l6 6M4 4v5M4 4h5M20 20l-6-6M20 20v-5M20 20h-5"/></symbol>
+    <symbol id="i-sparkle" viewBox="0 0 24 24" fill="currentColor"><path d="M10 3l1.6 4.9L16.5 9.5l-4.9 1.6L10 16l-1.6-4.9L3.5 9.5l4.9-1.6zM18 13l.9 2.6 2.6.9-2.6.9L18 20l-.9-2.6-2.6-.9 2.6-.9z"/></symbol>
+    <symbol id="i-ellipsis" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><circle cx="8" cy="12" r=".9" fill="currentColor"/><circle cx="12" cy="12" r=".9" fill="currentColor"/><circle cx="16" cy="12" r=".9" fill="currentColor"/></symbol>
+    <symbol id="i-left" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5m6-6-6 6 6 6"/></symbol>
+    <symbol id="i-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5m-6 6 6-6 6 6"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14m-6-6 6 6 6-6"/></symbol>
+    <symbol id="i-al-start" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 3v18" stroke-linecap="round"/><rect x="7" y="6" width="12" height="4" rx="1"/><rect x="7" y="14" width="8" height="4" rx="1"/></symbol>
+    <symbol id="i-al-center" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v18" stroke-linecap="round"/><rect x="5" y="6" width="14" height="4" rx="1"/><rect x="7" y="14" width="10" height="4" rx="1"/></symbol>
+    <symbol id="i-al-end" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 3v18" stroke-linecap="round"/><rect x="5" y="6" width="12" height="4" rx="1"/><rect x="9" y="14" width="8" height="4" rx="1"/></symbol>
     <symbol id="i-yes" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></symbol>
     <symbol id="i-no" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 12h10"/></symbol>
   </defs>
@@ -373,7 +439,7 @@ footer nav a:hover { color: var(--ink); }
     <div class="wrap">
       <div class="hero-copy">
         <img class="mascot" src="assets/mascot.png" alt="Display Monk mascot: a small monk with a smiling monitor for a head, sitting cross-legged">
-        <h1>Calm control for <em>your displays</em>.</h1>
+        <h1><span>Calm control for</span> <span><em>your displays</em>.</span></h1>
         <p class="lede">Display Monk lives in your Mac's menu bar and keeps every screen in balance. Brightness for every screen, kept in sync if you like, plus HiDPI resolutions, arrangement and monitor controls, one click away.</p>
         <div class="cta-row">
           <a class="btn btn-primary get-app" href="#download">
@@ -409,18 +475,18 @@ footer nav a:hover { color: var(--ink); }
 
             <div class="pm-panel">
               <div class="pm-title">
-                <svg><use href="#i-sun"/></svg><b>Brightness</b>
+                <svg><use href="#i-sunfill"/></svg><b>Brightness</b>
                 <label class="pm-switch"><span>Sync Brightness</span><input type="checkbox" id="sync" role="switch"><i></i></label>
               </div>
               <div class="pm-rows" id="rows">
                 <div class="pm-link" aria-hidden="true"><i></i><svg><use href="#i-link"/></svg><i></i></div>
                 <div class="pm-row">
-                  <div class="pm-line"><svg><use href="#i-laptop"/></svg><span class="pm-name">Built-in Retina Display</span><span class="pm-badge">Native</span><output id="o-built" for="b-built">70%</output></div>
-                  <input type="range" id="b-built" min="0" max="100" value="70" aria-label="Built-in Retina Display brightness">
+                  <div class="pm-line"><svg><use href="#i-laptop"/></svg><span class="pm-name">Built-in Retina Display</span><span class="pm-badge">Native</span><output id="o-built" for="b-built">49%</output></div>
+                  <input class="ms" type="range" id="b-built" min="0" max="100" value="49" aria-label="Built-in Retina Display brightness">
                 </div>
                 <div class="pm-row">
-                  <div class="pm-line"><svg><use href="#i-monitor"/></svg><span class="pm-name">LG UltraFine 27"</span><span class="pm-badge">DDC</span><output id="o-ext" for="b-ext">45%</output></div>
-                  <input type="range" id="b-ext" min="0" max="100" value="45" aria-label="LG UltraFine brightness">
+                  <div class="pm-line"><svg><use href="#i-monitor"/></svg><span class="pm-name">LG HDR QHD</span><span class="pm-badge">DDC</span><output id="o-ext" for="b-ext">31%</output></div>
+                  <input class="ms" type="range" id="b-ext" min="0" max="100" value="31" aria-label="LG HDR QHD brightness">
                 </div>
               </div>
               <p class="pm-caption" id="caption">Each display is adjusted on its own</p>
@@ -428,13 +494,63 @@ footer nav a:hover { color: var(--ink); }
 
             <div class="pm-group">
               <p class="pm-label">Displays</p>
-              <button class="pm-display" aria-expanded="false" aria-controls="more-built"><svg><use href="#i-laptop"/></svg><span><b>Built-in Retina Display</b><small>1512 × 982 HiDPI · 120Hz</small></span><svg class="chev"><use href="#i-chev"/></svg></button>
-              <div class="pm-more" id="more-built" hidden>
-                <dl class="spec"><dt>Resolution</dt><dd>1512 × 982 HiDPI</dd><dt>Refresh</dt><dd>ProMotion · 120Hz</dd><dt>Rotation</dt><dd>0°</dd></dl>
+              <div class="pm-drow open">
+                <button class="pm-dhead" aria-expanded="true" aria-controls="ctl-built"><svg><use href="#i-laptop"/></svg><span><b>Built-in Retina Display</b><small id="sum-built">1512 × 945 HiDPI · 120Hz</small></span><span class="pm-tag" style="flex:none">Main</span><svg class="chev"><use href="#i-chev"/></svg></button>
+                <div class="pm-ctrls" id="ctl-built">
+                  <div class="pm-kv"><svg><use href="#i-resize"/></svg><span class="k grow">Resolution</span>
+                    <select class="pill" id="res-built" aria-label="Built-in resolution"><option>1800 × 1125 HiDPI</option><option selected>1512 × 945 HiDPI</option><option>1352 × 845 HiDPI</option><option>1147 × 717 HiDPI</option></select></div>
+                  <div class="pm-pills">
+                    <select class="pill" id="hz-built" aria-label="Built-in refresh rate"><option selected>120Hz</option><option>60Hz</option></select>
+                    <select class="pill" aria-label="Built-in rotation"><option>0°</option><option>90°</option><option>180°</option><option>270°</option></select>
+                  </div>
+                </div>
               </div>
-              <button class="pm-display" aria-expanded="false" aria-controls="more-ext"><svg><use href="#i-monitor"/></svg><span><b>LG UltraFine 27"</b><small>2560 × 1440 HiDPI · 60Hz</small></span><svg class="chev"><use href="#i-chev"/></svg></button>
-              <div class="pm-more" id="more-ext" hidden>
-                <dl class="spec"><dt>Contrast</dt><dd>70%</dd><dt>Volume</dt><dd>40%</dd><dt>Input</dt><dd>USB-C</dd><dt>Position</dt><dd>Left of MacBook</dd></dl>
+              <div class="pm-drow">
+                <button class="pm-dhead" aria-expanded="false" aria-controls="ctl-ext"><svg><use href="#i-monitor"/></svg><span><b>LG HDR QHD</b><small id="sum-ext">1600 × 900 HiDPI · 75Hz</small></span><svg class="chev"><use href="#i-chev"/></svg></button>
+                <div class="pm-ctrls" id="ctl-ext" hidden>
+                  <div class="pm-row">
+                    <div class="pm-lab"><span>Contrast</span><span class="pm-val" id="o-con">70%</span></div>
+                    <div class="pm-sl"><svg><use href="#i-contrast"/></svg><input class="ms" type="range" id="con" min="0" max="100" value="70" aria-label="LG HDR QHD contrast"></div>
+                  </div>
+                  <div class="pm-row">
+                    <div class="pm-lab"><span>Volume</span><span class="pm-val" id="o-vol">25%</span></div>
+                    <div class="pm-sl"><button type="button" id="mute" aria-label="Mute" aria-pressed="false"><svg><use href="#i-spk"/></svg></button><input class="ms" type="range" id="vol" min="0" max="100" value="25" aria-label="LG HDR QHD volume"></div>
+                  </div>
+                  <div class="pm-kv"><svg><use href="#i-resize"/></svg><span class="k grow">Resolution</span>
+                    <select class="pill" id="res-ext" aria-label="LG HDR QHD resolution"></select></div>
+                  <div class="pm-kv"><svg><use href="#i-sparkle"/></svg><span>High Resolution (HiDPI)</span>
+                    <label class="pm-switch"><input type="checkbox" id="hidpi" role="switch" checked aria-label="High Resolution (HiDPI)"><i></i></label>
+                    <span class="grow"></span><button type="button" class="pm-ellipsis" id="hidpi-more" aria-label="More HiDPI options"><svg><use href="#i-ellipsis"/></svg></button></div>
+                  <div class="pm-pills">
+                    <select class="pill" id="hz-ext" aria-label="LG HDR QHD refresh rate"><option selected>75Hz</option><option>60Hz</option><option>50Hz</option></select>
+                    <select class="pill" aria-label="LG HDR QHD rotation"><option>0°</option><option>90°</option><option>180°</option><option>270°</option></select>
+                    <select class="pill" aria-label="LG HDR QHD input"><option>USB-C</option><option>DisplayPort 1</option><option>HDMI 1</option><option>HDMI 2</option></select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="pm-group">
+              <p class="pm-label">Arrangement</p>
+              <div class="pm-panel pm-arr">
+                <div class="pm-stage" id="stage">
+                  <button type="button" class="pm-box main" id="box-built" aria-label="Select MacBook">MacBook</button>
+                  <button type="button" class="pm-box sel" id="box-ext" aria-label="Select LG HDR QHD">LG HDR QHD</button>
+                </div>
+                <div class="pm-arrbar" id="arrbar">
+                  <span class="pm-place">
+                    <button type="button" class="ib" data-side="left" aria-label="Left of MacBook"><svg><use href="#i-left"/></svg></button>
+                    <button type="button" class="ib" data-side="above" aria-label="Above MacBook"><svg><use href="#i-up"/></svg></button>
+                    <button type="button" class="ib" data-side="right" aria-label="Right of MacBook"><svg><use href="#i-right"/></svg></button>
+                    <button type="button" class="ib" data-side="below" aria-label="Below MacBook"><svg><use href="#i-down"/></svg></button>
+                    <span class="pm-sep"></span>
+                    <button type="button" class="ib" data-align="start" aria-label="Align start"><svg><use href="#i-al-start"/></svg></button>
+                    <button type="button" class="ib" data-align="center" aria-label="Align center"><svg><use href="#i-al-center"/></svg></button>
+                    <button type="button" class="ib" data-align="end" aria-label="Align end"><svg><use href="#i-al-end"/></svg></button>
+                  </span>
+                  <span class="pm-note" id="arr-note" hidden>MacBook</span>
+                  <button type="button" class="pm-btn" id="set-main">Set as Main</button>
+                </div>
               </div>
             </div>
 
@@ -445,7 +561,7 @@ footer nav a:hover { color: var(--ink); }
             </div>
           </div>
         </div>
-        <p class="desk-caption">A preview with example values. Turn on Sync Brightness, then drag either slider.</p>
+        <p class="desk-caption">The real menu, with example values. Turn on Sync Brightness, open a display, or move the LG around the MacBook.</p>
       </div>
     </div>
   </section>
@@ -722,12 +838,18 @@ const COMPARE = [
     glyph.setAttribute("aria-expanded", open);
     menu.hidden = !open;
   });
-  $$(".pm-display").forEach(btn => btn.addEventListener("click", () => {
-    const more = document.getElementById(btn.getAttribute("aria-controls"));
+  // Display rows open and close like the app's disclosure rows.
+  $$(".pm-dhead").forEach(btn => btn.addEventListener("click", () => {
+    const panel = document.getElementById(btn.getAttribute("aria-controls"));
     const open = btn.getAttribute("aria-expanded") !== "true";
     btn.setAttribute("aria-expanded", open);
-    more.hidden = !open;
+    btn.parentElement.classList.toggle("open", open);
+    panel.hidden = !open;
   }));
+
+  // Sliders show their fill the way macOS does.
+  const fill = el => el.style.setProperty("--p", el.value + "%");
+  $$(".ms").forEach(el => { fill(el); el.addEventListener("input", () => fill(el)); });
 
   // Brightness: with Sync on, either slider moves both, like the app. Turning Sync on keeps the
   // display you're on (the built-in one here) and matches the other to it.
@@ -736,6 +858,7 @@ const COMPARE = [
   const paint = () => {
     $("#o-built").textContent = bb.value + "%";
     $("#o-ext").textContent = be.value + "%";
+    fill(bb); fill(be);
     dim.style.opacity = ((1 - bb.value / 100) * 0.72).toFixed(3);
     rows.classList.toggle("linked", sync.checked);
     caption.innerHTML = sync.checked
@@ -747,6 +870,89 @@ const COMPARE = [
   be.addEventListener("input", () => follow(be, bb));
   sync.addEventListener("change", () => { if (sync.checked) be.value = bb.value; paint(); });
   paint();
+
+  // External display controls.
+  const con = $("#con"), vol = $("#vol"), mute = $("#mute");
+  con.addEventListener("input", () => { $("#o-con").textContent = con.value + "%"; });
+  const paintVolume = () => {
+    const muted = mute.getAttribute("aria-pressed") === "true";
+    $("#o-vol").textContent = muted ? "Muted" : vol.value + "%";
+    mute.innerHTML = `<svg><use href="#${muted ? "i-spkx" : "i-spk"}"/></svg>`;
+    mute.setAttribute("aria-label", muted ? "Unmute" : "Mute");
+  };
+  mute.addEventListener("click", () => { mute.setAttribute("aria-pressed", mute.getAttribute("aria-pressed") !== "true"); paintVolume(); });
+  vol.addEventListener("input", () => { if (vol.value > 0) mute.setAttribute("aria-pressed", "false"); paintVolume(); });
+
+  // Resolution menus and the row summaries, e.g. "1600 × 900 HiDPI · 75Hz".
+  const modes = { hidpi: ["1920 × 1080 HiDPI", "1600 × 900 HiDPI", "1280 × 720 HiDPI"], lodpi: ["2560 × 1440", "1920 × 1080", "1280 × 720"] };
+  const resExt = $("#res-ext"), hidpi = $("#hidpi");
+  const fillModes = selected => {
+    resExt.innerHTML = modes[hidpi.checked ? "hidpi" : "lodpi"].map(m => `<option${m === selected ? " selected" : ""}>${m}</option>`).join("");
+  };
+  const summaries = () => {
+    $("#sum-built").textContent = `${$("#res-built").value} · ${$("#hz-built").value}`;
+    $("#sum-ext").textContent = `${resExt.value} · ${$("#hz-ext").value}`;
+  };
+  fillModes("1600 × 900 HiDPI");
+  hidpi.addEventListener("change", () => { fillModes(hidpi.checked ? "1600 × 900 HiDPI" : "2560 × 1440"); summaries(); });
+  ["#res-built", "#hz-built", "#res-ext", "#hz-ext"].forEach(id => $(id).addEventListener("change", summaries));
+  summaries();
+  $("#hidpi-more").addEventListener("click", () => toast("Make HiDPI Permanent… keeps these sizes even when Display Monk isn't running"));
+
+  // Arrangement: the displays to scale (points), like ArrangementView. The LG is placed relative
+  // to the MacBook; Set as Main moves the menu bar line.
+  const size = { built: { w: 1512, h: 945 }, ext: { w: 1600, h: 900 } };
+  const arr = { side: "above", align: "center", selected: "ext", main: "built" };
+  const stage = $("#stage"), boxes = { built: $("#box-built"), ext: $("#box-ext") };
+  const placeExt = () => {
+    const a = size.built, b = size.ext, { side, align } = arr;
+    const along = (span, own) => align === "start" ? 0 : align === "center" ? (span - own) / 2 : span - own;
+    if (side === "left" || side === "right") return { x: side === "left" ? -b.w : a.w, y: along(a.h, b.h) };
+    return { x: along(a.w, b.w), y: side === "above" ? -b.h : a.h };
+  };
+  const icons = { start: ["i-al-start", "Align top"], center: ["i-al-center", "Align centre"], end: ["i-al-end", "Align bottom"] };
+  const drawArrangement = () => {
+    const e = placeExt();
+    const frames = { built: { x: 0, y: 0, ...size.built }, ext: { ...e, ...size.ext } };
+    const minX = Math.min(0, e.x), minY = Math.min(0, e.y);
+    const spanX = Math.max(size.built.w, e.x + size.ext.w) - minX, spanY = Math.max(size.built.h, e.y + size.ext.h) - minY;
+    const W = stage.clientWidth, H = stage.clientHeight;
+    const scale = Math.min((W - 20) / spanX, (H - 16) / spanY);
+    const ox = (W - spanX * scale) / 2, oy = (H - spanY * scale) / 2;
+    for (const key of ["built", "ext"]) {
+      const f = frames[key], el = boxes[key];
+      el.style.left = (ox + (f.x - minX) * scale + 1) + "px";
+      el.style.top = (oy + (f.y - minY) * scale + 1) + "px";
+      el.style.width = (f.w * scale - 2) + "px";
+      el.style.height = (f.h * scale - 2) + "px";
+      el.style.setProperty("--bh", (f.h * scale - 2) + "px");
+      el.classList.toggle("sel", arr.selected === key);
+      el.classList.toggle("main", arr.main === key);
+    }
+    const horizontal = arr.side === "left" || arr.side === "right";
+    $$("[data-side]").forEach(b => b.classList.toggle("on", b.dataset.side === arr.side));
+    $$("[data-align]").forEach(b => {
+      b.classList.toggle("on", b.dataset.align === arr.align);
+      // Beside the MacBook the edges line up top to bottom; above or below, left to right.
+      b.querySelector("svg").style.transform = horizontal ? "rotate(90deg)" : "";
+      b.setAttribute("aria-label", "Align " + (horizontal ? ["top", "centre", "bottom"] : ["left", "centre", "right"])[["start", "center", "end"].indexOf(b.dataset.align)]);
+    });
+    const builtSelected = arr.selected === "built";
+    $(".pm-place").hidden = builtSelected;
+    $("#arr-note").hidden = !builtSelected;
+    $("#set-main").hidden = arr.main === arr.selected;
+  };
+  $$("[data-side]").forEach(b => b.addEventListener("click", () => { arr.side = b.dataset.side; drawArrangement(); }));
+  $$("[data-align]").forEach(b => b.addEventListener("click", () => { arr.align = b.dataset.align; drawArrangement(); }));
+  boxes.built.addEventListener("click", () => { arr.selected = "built"; drawArrangement(); });
+  boxes.ext.addEventListener("click", () => { arr.selected = "ext"; drawArrangement(); });
+  $("#set-main").addEventListener("click", () => {
+    arr.main = arr.selected;
+    drawArrangement();
+    toast(`The menu bar and Dock move to ${arr.main === "built" ? "the MacBook" : "the LG HDR QHD"}`);
+  });
+  drawArrangement();
+  addEventListener("resize", drawArrangement);
 
   $("#pm-settings").addEventListener("click", () => toast("Settings: brightness keys, volume keys, on-screen display, launch at login"));
   $("#pm-refresh").addEventListener("click", () => toast("Displays refreshed"));
