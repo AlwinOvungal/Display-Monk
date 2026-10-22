@@ -23,7 +23,7 @@ Website: <https://alwinovungal.github.io/Display-Monk/> (source in `site/`, publ
 | Raw read/write of any VCP code | | ✓ |
 | Resolution list with HiDPI modes, refresh rate | ✓ | ✓ |
 | Rotation | ✓ | ✓ |
-| Brightness/volume keys control the display under the pointer, with an on-screen display | ✓ | |
+| Brightness keys control the display under the pointer, volume keys the monitor selected as sound output, with an on-screen display | ✓ | |
 | Remembers per-display settings, launch at login | ✓ | |
 
 ## Install
@@ -185,6 +185,9 @@ Limits:
   Display Monk in the Accessibility list, remove it with **–**, then add it again with **+**.
 - Brightness keys work for the external display under the pointer. Over the MacBook's own
   screen they keep controlling it as usual.
+- Volume keys follow the output picked in **Sound → Output** (or Control Center). When that is a
+  monitor's speakers over HDMI or DisplayPort, Display Monk sets its volume over DDC; for the
+  MacBook's speakers, AirPods or any other output, macOS handles the keys as usual.
 - The app is not sandboxed: DDC needs direct IOKit access.
 
 ## How it works

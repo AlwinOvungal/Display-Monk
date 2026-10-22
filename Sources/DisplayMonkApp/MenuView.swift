@@ -226,7 +226,9 @@ struct BrightnessPanel: View {
                     BrightnessRow(state: state, store: store)
                 }
             }
-            .padding(.leading, store.canSync ? 20 : 0)
+            // Room for the link bracket only while sync is on; otherwise the rows line up with
+            // the sun icon.
+            .padding(.leading, store.isSyncActive ? 20 : 0)
             .overlay(alignment: .leading) {
                 if store.canSync {
                     LinkBracket(isActive: store.isSyncActive)

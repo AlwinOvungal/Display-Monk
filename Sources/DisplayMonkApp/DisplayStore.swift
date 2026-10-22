@@ -110,6 +110,23 @@ final class DisplayStore: ObservableObject {
         return displays.first { $0.display.modeTarget == id } ?? displays.first { $0.display.isMain }
     }
 
+    /// The display whose speakers macOS is playing through, when macOS can't set their volume
+    /// itself. Nil for any other output (MacBook speakers, AirPods, USB), so the volume keys
+    /// reach macOS.
+    var volumeTarget: DisplayState? {
+        guard let output = AudioOutput.current(), output.isDisplayAudio, !output.hasSystemVolume else { return nil }
+        let candidates = displays.filter { $0.volume != nil }
+        // macOS names HDMI and DisplayPort audio after the monitor, e.g. "LG HDR QHD".
+        let outputName = output.name.lowercased()
+        if !outputName.isEmpty, let match = candidates.first(where: {
+            let name = $0.display.name.lowercased()
+            return !name.isEmpty && (outputName.contains(name) || name.contains(outputName))
+        }) {
+            return match
+        }
+        return candidates.count == 1 ? candidates[0] : nil
+    }
+
     // MARK: Brightness sync
 
     var canSync: Bool { displays.count > 1 }
