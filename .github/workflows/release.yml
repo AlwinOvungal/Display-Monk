@@ -2,7 +2,7 @@ name: Release
 
 # Builds the universal app and attaches DisplayMonk.dmg, DisplayMonk.zip and the displaymonk CLI to a GitHub release.
 # Runs on its own when a release is published; use "Run workflow" to (re)attach the
-# app to an existing release, e.g. v0.1.4.
+# app to an existing release, e.g. v0.1.5.
 
 on:
   release:
@@ -10,9 +10,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Release tag to attach the app to (for example v0.1.4)
+        description: Release tag to attach the app to (for example v0.1.5)
         required: true
-        default: v0.1.4
+        default: v0.1.5
 
 permissions:
   contents: write

@@ -34,6 +34,7 @@ targets += [
             .linkedFramework("IOKit"),
             .linkedFramework("CoreGraphics"),
             .linkedFramework("AppKit"),
+            .linkedFramework("CoreAudio"),
         ]
     ),
     .executableTarget(

@@ -22,6 +22,8 @@ final class StatusItemController: NSObject {
         item.button?.image = MenuBarIcon.image
         item.button?.target = self
         item.button?.action = #selector(toggle)
+        // Open on press, like the system's menu bar menus.
+        item.button?.sendAction(on: [.leftMouseDown])
         item.button?.setAccessibilityLabel("Display Monk")
         statusItem = item
     }
@@ -49,9 +51,11 @@ final class StatusItemController: NSObject {
         panel.makeKeyAndOrderFront(nil)
         statusItem?.button?.highlight(true)
 
-        // Close on a click anywhere outside the panel, or on Escape.
+        // Close on a click anywhere outside the panel, or on Escape. A click on the icon itself
+        // is left to `toggle`: closing here as well would make that click reopen the panel.
         if let monitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown], handler: { [weak self] _ in
-            self?.close()
+            guard let self, !self.isPointerOnIcon else { return }
+            self.close()
         }) {
             monitors.append(monitor)
         }
@@ -85,23 +89,34 @@ final class StatusItemController: NSObject {
         panel.hidesOnDeactivate = false
         panel.isMovable = false
         panel.collectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary, .transient]
-        NotificationCenter.default.addObserver(self, selector: #selector(panelDidResize), name: NSWindow.didResizeNotification, object: panel)
+        NotificationCenter.default.addObserver(self, selector: #selector(reanchor), name: NSWindow.didResizeNotification, object: panel)
+        // Set as Main moves the menu bar, and the icon with it.
+        NotificationCenter.default.addObserver(self, selector: #selector(reanchor), name: NSApplication.didChangeScreenParametersNotification, object: nil)
         self.controller = controller
         self.panel = panel
         return panel
     }
 
-    /// Keeps the top edge under the icon when the content grows or shrinks.
-    @objc private func panelDidResize() {
+    /// Keeps the top edge under the icon when the content grows or shrinks, or the screens change.
+    @objc private func reanchor() {
         guard let panel, panel.isVisible else { return }
         anchor = anchorPoint(for: panel.frame.width)
         panel.setFrameTopLeftPoint(anchor)
         panel.invalidateShadow()
     }
 
+    /// The icon's frame in screen coordinates.
+    private var iconFrame: NSRect? {
+        guard let button = statusItem?.button, let window = button.window else { return nil }
+        return window.convertToScreen(button.convert(button.bounds, to: nil))
+    }
+
+    private var isPointerOnIcon: Bool {
+        iconFrame?.contains(NSEvent.mouseLocation) ?? false
+    }
+
     private func anchorPoint(for width: CGFloat) -> NSPoint {
-        guard let button = statusItem?.button, let window = button.window else { return anchor }
-        let iconFrame = window.convertToScreen(button.convert(button.bounds, to: nil))
+        guard let iconFrame, let window = statusItem?.button?.window else { return anchor }
         var x = iconFrame.midX - width / 2
         if let visible = window.screen?.visibleFrame {
             x = min(max(x, visible.minX + 8), visible.maxX - width - 8)

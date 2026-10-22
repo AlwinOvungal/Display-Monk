@@ -88,6 +88,13 @@ final class DisplayStore: ObservableObject {
     }
 
     /// The display other displays are placed relative to: the built-in one, else the main one.
+    /// Re-reads every display's position right after a move, so the preview follows at once
+    /// instead of waiting for the reconfiguration reload.
+    func arrangementDidChange() {
+        displays.forEach { $0.refreshFrame() }
+        objectWillChange.send()
+    }
+
     func arrangementReference(for state: DisplayState) -> DisplayState? {
         let others = displays.filter { $0.id != state.id }
         return others.first { $0.display.isBuiltIn } ?? others.first { $0.display.isMain } ?? others.first
@@ -101,6 +108,23 @@ final class DisplayStore: ObservableObject {
     var displayUnderMouse: DisplayState? {
         let id = NSScreen.underMouse?.displayID
         return displays.first { $0.display.modeTarget == id } ?? displays.first { $0.display.isMain }
+    }
+
+    /// The display whose speakers macOS is playing through, when macOS can't set their volume
+    /// itself. Nil for any other output (MacBook speakers, AirPods, USB), so the volume keys
+    /// reach macOS.
+    var volumeTarget: DisplayState? {
+        guard let output = AudioOutput.current(), output.isDisplayAudio, !output.hasSystemVolume else { return nil }
+        let candidates = displays.filter { $0.volume != nil }
+        // macOS names HDMI and DisplayPort audio after the monitor, e.g. "LG HDR QHD".
+        let outputName = output.name.lowercased()
+        if !outputName.isEmpty, let match = candidates.first(where: {
+            let name = $0.display.name.lowercased()
+            return !name.isEmpty && (outputName.contains(name) || name.contains(outputName))
+        }) {
+            return match
+        }
+        return candidates.count == 1 ? candidates[0] : nil
     }
 
     // MARK: Brightness sync
@@ -338,6 +362,10 @@ final class DisplayState: ObservableObject, Identifiable {
         modes = DisplayModes.available(for: modeTarget)
         currentMode = DisplayModes.current(for: modeTarget)
         rotation = DisplayRotation.current(for: modeTarget)
+        refreshFrame()
+    }
+
+    func refreshFrame() {
         frame = DisplayArrangement.rect(of: display)
     }
 
@@ -746,13 +774,19 @@ enum Preferences {
     /// One-time clean-ups of settings written by earlier versions.
     static func migrate() {
         let defaults = UserDefaults.standard
-        guard defaults.integer(forKey: "settingsVersion") < 2 else { return }
-        // HiDPI sizes picked while testing earlier builds would override the 1600x900 default.
-        for key in defaults.dictionaryRepresentation().keys
-            where key.hasPrefix("display.") && (key.hasSuffix(".hiDPISize") || key.hasSuffix(".virtualHiDPI")) {
-            defaults.removeObject(forKey: key)
+        let version = defaults.integer(forKey: "settingsVersion")
+        guard version < 3 else { return }
+        if version < 2 {
+            // HiDPI sizes picked while testing earlier builds would override the 1600x900 default.
+            for key in defaults.dictionaryRepresentation().keys
+                where key.hasPrefix("display.") && (key.hasSuffix(".hiDPISize") || key.hasSuffix(".virtualHiDPI")) {
+                defaults.removeObject(forKey: key)
+            }
         }
-        defaults.set(2, forKey: "settingsVersion")
+        // Every section starts closed; from here on, sections stay as the user leaves them.
+        defaults.removeObject(forKey: "expandedDisplays")
+        defaults.removeObject(forKey: "arrangementExpanded")
+        defaults.set(3, forKey: "settingsVersion")
     }
 
     static func registerDefaults() {

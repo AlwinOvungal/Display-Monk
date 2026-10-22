@@ -4,28 +4,84 @@ import SwiftUI
 
 /// A live, to-scale picture of the displays with one-click placement: arrows put the selected
 /// display beside the MacBook (or main display), alignment icons line up its edges, and Set as
-/// Main moves the menu bar and Dock.
+/// Main moves the menu bar and Dock. Collapsed by default to a one-line summary.
 struct ArrangementSection: View {
     @ObservedObject var store: DisplayStore
+    @AppStorage("arrangementExpanded") private var isExpanded = false
     @State private var selectedID: CGDirectDisplayID?
+    @State private var isHovered = false
 
     var body: some View {
         let displays = store.displays
         let selected = displays.first { $0.id == selectedID } ?? displays.first { !$0.display.isBuiltIn } ?? displays.first
         VStack(alignment: .leading, spacing: 4) {
-            Text("Arrangement")
-                .font(.caption.weight(.semibold))
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 8)
-            VStack(alignment: .leading, spacing: 8) {
-                ArrangementPreview(displays: displays, selectedID: selected?.id) { selectedID = $0 }
-                    .frame(height: 96)
-                if let selected {
-                    controls(for: selected)
+            header
+            if isExpanded {
+                VStack(alignment: .leading, spacing: 8) {
+                    ArrangementPreview(displays: displays, selectedID: selected?.id) { selectedID = $0 }
+                        .frame(height: 96)
+                    if let selected {
+                        controls(for: selected)
+                    }
                 }
+                .monkPanel(padding: 10)
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
-            .monkPanel(padding: 10)
         }
+        .clipped()
+    }
+
+    private var header: some View {
+        Button {
+            withAnimation(.spring(response: 0.28, dampingFraction: 0.9)) { isExpanded.toggle() }
+        } label: {
+            HStack(spacing: 6) {
+                Text("Arrangement")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                Spacer(minLength: 6)
+                if !isExpanded {
+                    Text(summary)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                        .transition(.opacity)
+                }
+                Image(systemName: "chevron.right")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(
+                RoundedRectangle(cornerRadius: 8, style: .continuous)
+                    .fill(Color.primary.opacity(isHovered ? 0.04 : 0))
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovered = $0 }
+        .accessibilityHint(isExpanded ? "Hides the display arrangement" : "Shows the display arrangement")
+    }
+
+    /// Where the external display sits, e.g. "LG HDR QHD above MacBook".
+    private var summary: String {
+        let displays = store.displays
+        guard displays.count == 2,
+              let external = displays.first(where: { !$0.display.isBuiltIn }) ?? displays.last,
+              let reference = store.arrangementReference(for: external),
+              let placement = external.placement(relativeTo: reference)?.0
+        else { return "\(displays.count) displays" }
+        let position = positionLabel(placement, arrangementName(reference))
+        return "\(arrangementName(external)) \(position.prefix(1).lowercased())\(position.dropFirst())"
+    }
+
+    /// Runs a move and redraws the preview straight away, animated.
+    private func perform(_ action: () -> Void) {
+        action()
+        withAnimation(.easeInOut(duration: 0.2)) { store.arrangementDidChange() }
     }
 
     @ViewBuilder private func controls(for selected: DisplayState) -> some View {
@@ -36,13 +92,13 @@ struct ArrangementSection: View {
                 let referenceName = arrangementName(reference)
                 ForEach([Placement.left, .above, .right, .below], id: \.self) { placement in
                     IconButton(icon: arrow(for: placement), isOn: current?.0 == placement, help: positionLabel(placement, referenceName)) {
-                        selected.move(placement, current?.1 ?? .center, relativeTo: reference)
+                        perform { selected.move(placement, current?.1 ?? .center, relativeTo: reference) }
                     }
                 }
                 Divider().frame(height: 16).padding(.horizontal, 2)
                 ForEach(PlacementAlignment.allCases, id: \.self) { alignment in
                     IconButton(icon: icon(for: alignment, along: side), isOn: current?.1 == alignment, help: "Align \(alignment.label(for: side).lowercased())") {
-                        selected.move(side, alignment, relativeTo: reference)
+                        perform { selected.move(side, alignment, relativeTo: reference) }
                     }
                 }
             } else {
@@ -50,7 +106,7 @@ struct ArrangementSection: View {
             }
             Spacer(minLength: 0)
             if !selected.display.isMain {
-                Button("Set as Main") { selected.makeMain(among: store.displays) }
+                Button("Set as Main") { perform { selected.makeMain(among: store.displays) } }
                     .controlSize(.small)
                     .help("Moves the menu bar and Dock to \(arrangementName(selected))")
             }
@@ -143,6 +199,9 @@ private struct ArrangementPreview: View {
                         .onTapGesture { onSelect(state.id) }
                 }
             }
+            // Boxes glide to their new places when the arrangement changes, including changes
+            // made in System Settings.
+            .animation(.easeInOut(duration: 0.2), value: frames)
         }
         .background(RoundedRectangle(cornerRadius: 8, style: .continuous).fill(Color.primary.opacity(0.05)))
     }
