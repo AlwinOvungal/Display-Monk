@@ -103,7 +103,7 @@ p { margin: 0; }
 @media (max-width: 760px) { .nav-links { display: none; } .nav .btn { margin-left: auto; } }
 
 /* ---------- Hero ---------- */
-.hero .wrap { display: grid; grid-template-columns: 1.1fr 1fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; padding-block: clamp(2.5rem, 6vw, 5rem) clamp(3rem, 6vw, 5.5rem); }
+.hero .wrap { display: grid; grid-template-columns: 1fr 1fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; padding-block: clamp(2.5rem, 6vw, 5rem) clamp(3rem, 6vw, 5.5rem); }
 .hero-copy { container-type: inline-size; min-width: 0; display: grid; gap: 1.4rem; justify-items: start; }
 .mascot { width: clamp(96px, 12vw, 132px); height: auto; animation: breathe 6s ease-in-out infinite; transform-origin: 50% 90%; }
 @keyframes breathe { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-4px) scale(1.015); } }
@@ -181,18 +181,18 @@ p { margin: 0; }
 .pm-switch input:checked + i { background: var(--saffron-deep); }
 .pm-switch input:checked + i::after { transform: translateX(11px); }
 .pm-switch input:focus-visible + i { outline: 2px solid var(--saffron); outline-offset: 2px; }
-.pm-rows { position: relative; display: grid; gap: 12px; padding-left: 20px; }
-.pm-link { position: absolute; left: 0; top: 6px; bottom: 6px; width: 12px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: var(--saffron); opacity: 0; transition: opacity .15s ease; }
-.pm-link i { flex: 1; width: 2px; border-radius: 2px; background: currentColor; }
-.pm-link svg { width: 10px; height: 10px; }
-.pm-rows.linked .pm-link { opacity: 1; }
+.pm-rows { display: grid; gap: 12px; }
+.pm-rows.linked { gap: 6px; }
+.pm-synclink { display: flex; align-items: center; gap: 6px; color: var(--saffron); font-size: 11px; font-weight: 500; }
+.pm-synclink[hidden] { display: none; }
+.pm-synclink i { flex: 1; height: 1px; background: rgba(255,122,61,.35); }
+.pm-synclink svg { width: 10px; height: 10px; }
 .pm-row { display: grid; gap: 6px; min-width: 0; }
 .pm-line { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .pm-line > svg { color: var(--m-dim); }
 .pm-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
 .pm-badge { font-size: 10px; font-weight: 600; padding: 1px 7px; border-radius: 99px; background: rgba(255,255,255,.1); color: var(--m-dim); flex: none; }
 .pm-line output, .pm-val { margin-left: auto; font-variant-numeric: tabular-nums; color: var(--m-dim); flex: none; }
-.pm-caption { font-size: 11.5px; color: var(--m-dim); display: flex; align-items: center; gap: 6px; min-height: 16px; margin: 0; }
 .pm-group { display: grid; gap: 5px; }
 .pm-label { font-size: 11.5px; font-weight: 600; color: var(--m-dim); margin: 0 0 0 8px; }
 
@@ -210,10 +210,11 @@ p { margin: 0; }
 .pm-drow.open { background: var(--m-fill); }
 .pm-dhead { all: unset; box-sizing: border-box; width: 100%; display: flex; align-items: center; gap: 8px; padding: 8px 10px; cursor: pointer; border-radius: 12px; }
 .pm-dhead > svg:first-child { color: var(--m-dim); }
-.pm-dhead span { flex: 1; min-width: 0; display: grid; }
+.pm-dhead > span:not(.pm-tag) { flex: 1; min-width: 0; display: grid; }
 .pm-dhead b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.pm-dhead small { font-size: 11.5px; color: var(--m-dim); font-variant-numeric: tabular-nums; }
-.pm-tag { font-size: 11px; font-weight: 600; color: var(--m-dim); }
+.pm-dhead small { font-size: 11.5px; color: var(--m-dim); font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pm-tag { flex: none; font-size: 11px; font-weight: 600; color: var(--m-dim); }
+.pm-tag[hidden] { display: none; }
 .pm-dhead .chev { width: 12px; height: 12px; color: var(--m-dim); transition: transform .2s ease; }
 .pm-drow.open .chev { transform: rotate(90deg); }
 .pm-ctrls { display: grid; gap: 10px; padding: 0 10px 10px; }
@@ -240,6 +241,13 @@ p { margin: 0; }
 
 /* Arrangement */
 .pm-arr { display: grid; gap: 8px; padding: 10px; }
+.pm-arr[hidden] { display: none; }
+.menu .pm-arrhead { all: unset; box-sizing: border-box; display: flex; align-items: center; gap: 6px; padding: 4px 8px; border-radius: 8px; cursor: pointer; font-size: 11.5px; font-weight: 600; color: var(--m-dim); }
+.pm-arrhead:hover { background: var(--m-hover); }
+.pm-arrhead small { margin-left: auto; min-width: 0; font-size: 11.5px; font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-arrhead[aria-expanded="true"] small { visibility: hidden; }
+.pm-arrhead .chev { width: 12px; height: 12px; flex: none; transition: transform .2s ease; }
+.pm-arrhead[aria-expanded="true"] .chev { transform: rotate(90deg); }
 .pm-stage { position: relative; height: 96px; border-radius: 8px; background: rgba(255,255,255,.05); }
 .pm-box { all: unset; position: absolute; box-sizing: border-box; border-radius: 4px; cursor: pointer; display: block; padding: 0 3px; line-height: var(--bh, 30px); text-align: center; text-overflow: ellipsis; font-size: 9px; font-weight: 600; letter-spacing: -0.01em;
   background: rgba(255,255,255,.14); box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); transition: left .2s ease, top .2s ease; overflow: hidden; white-space: nowrap; }
@@ -252,7 +260,7 @@ p { margin: 0; }
 .ib svg { width: 13px; height: 13px; }
 .ib.on { background: rgba(255,122,61,.32); }
 .pm-sep { width: 1px; height: 16px; background: var(--m-line); margin: 0 2px; }
-.pm-btn { all: unset; cursor: pointer; margin-left: auto; font-size: 12px; padding: 2px 9px; border-radius: 6px; background: rgba(255,255,255,.14); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.2); white-space: nowrap; }
+.menu .pm-btn { all: unset; cursor: pointer; margin-left: auto; font-size: 12px; padding: 2px 9px; border-radius: 6px; background: rgba(255,255,255,.14); box-shadow: inset 0 0 0 .5px rgba(255,255,255,.2); white-space: nowrap; }
 .pm-btn[hidden] { display: none; }
 .pm-note { font-size: 11.5px; color: var(--m-dim); }
 
@@ -260,6 +268,17 @@ p { margin: 0; }
 .pm-foot button { all: unset; cursor: pointer; padding: 3px 5px; border-radius: 6px; display: grid; place-items: center; }
 .pm-foot button:hover { background: var(--m-hover); color: var(--m-fg); }
 .pm-foot .quit { margin-left: auto; }
+@media (min-width: 901px) {
+  /* A square that lines up with the hero text; a tall menu scrolls inside it. */
+  .desk { aspect-ratio: 1; padding-bottom: 14px; }
+  .desk .menu { min-height: 0; gap: 10px; padding: 12px 14px; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; }
+  /* The caption hangs below the square, so the square itself centres on the hero text. */
+  .desk-wrap { position: relative; }
+  .desk-wrap .desk-caption { position: absolute; left: 0; right: 0; top: 100%; }
+}
+@media (min-width: 901px) and (max-width: 1150px) {
+  .desk .menu { zoom: .86; }
+}
 .desk-caption { font-size: .82rem; color: var(--muted); margin-top: .7rem; text-align: center; }
 .alt-dl { font-size: .9rem; color: var(--band-muted); }
 .alt-dl a { color: inherit; }
@@ -539,7 +558,7 @@ footer nav a:hover { color: var(--ink); }
         </div>
       </div>
 
-      <div>
+      <div class="desk-wrap">
         <div class="desk" id="desk" aria-label="Interactive preview of the Display Monk menu">
           <div class="wallpaper"></div>
           <div class="dim" id="dim"></div>
@@ -563,24 +582,23 @@ footer nav a:hover { color: var(--ink); }
                 <label class="pm-switch"><span>Sync Brightness</span><input type="checkbox" id="sync" role="switch"><i></i></label>
               </div>
               <div class="pm-rows" id="rows">
-                <div class="pm-link" aria-hidden="true"><i></i><svg><use href="#i-link"/></svg><i></i></div>
                 <div class="pm-row">
-                  <div class="pm-line"><svg><use href="#i-laptop"/></svg><span class="pm-name">Built-in Retina Display</span><span class="pm-badge">Native</span><output id="o-built" for="b-built">49%</output></div>
-                  <input class="ms" type="range" id="b-built" min="0" max="100" value="49" aria-label="Built-in Retina Display brightness">
+                  <div class="pm-line"><svg><use href="#i-laptop"/></svg><span class="pm-name">Built-in Retina Display</span><span class="pm-badge">Native</span><output id="o-built" for="b-built">81%</output></div>
+                  <input class="ms" type="range" id="b-built" min="0" max="100" value="81" aria-label="Built-in Retina Display brightness">
                 </div>
+                <div class="pm-synclink" id="synclink" hidden><i></i><svg><use href="#i-link"/></svg><span>Synced</span><i></i></div>
                 <div class="pm-row">
-                  <div class="pm-line"><svg><use href="#i-monitor"/></svg><span class="pm-name">LG HDR QHD</span><span class="pm-badge">DDC</span><output id="o-ext" for="b-ext">31%</output></div>
-                  <input class="ms" type="range" id="b-ext" min="0" max="100" value="31" aria-label="LG HDR QHD brightness">
+                  <div class="pm-line"><svg><use href="#i-monitor"/></svg><span class="pm-name">External Display</span><span class="pm-badge">DDC</span><output id="o-ext" for="b-ext">63%</output></div>
+                  <input class="ms" type="range" id="b-ext" min="0" max="100" value="63" aria-label="External Display brightness">
                 </div>
               </div>
-              <p class="pm-caption" id="caption">Each display is adjusted on its own</p>
             </div>
 
             <div class="pm-group">
               <p class="pm-label">Displays</p>
-              <div class="pm-drow open">
-                <button class="pm-dhead" aria-expanded="true" aria-controls="ctl-built"><svg><use href="#i-laptop"/></svg><span><b>Built-in Retina Display</b><small id="sum-built">1512 × 945 HiDPI · 120Hz</small></span><span class="pm-tag" style="flex:none">Main</span><svg class="chev"><use href="#i-chev"/></svg></button>
-                <div class="pm-ctrls" id="ctl-built">
+              <div class="pm-drow">
+                <button class="pm-dhead" aria-expanded="false" aria-controls="ctl-built"><svg><use href="#i-laptop"/></svg><span><b>Built-in Retina Display</b><small id="sum-built">1512 × 945 HiDPI · 120Hz</small></span><span class="pm-tag" data-main="built" hidden>Main</span><svg class="chev"><use href="#i-chev"/></svg></button>
+                <div class="pm-ctrls" id="ctl-built" hidden>
                   <div class="pm-kv"><svg><use href="#i-resize"/></svg><span class="k grow">Resolution</span>
                     <select class="pill" id="res-built" aria-label="Built-in resolution"><option>1800 × 1125 HiDPI</option><option selected>1512 × 945 HiDPI</option><option>1352 × 845 HiDPI</option><option>1147 × 717 HiDPI</option></select></div>
                   <div class="pm-pills">
@@ -590,36 +608,36 @@ footer nav a:hover { color: var(--ink); }
                 </div>
               </div>
               <div class="pm-drow">
-                <button class="pm-dhead" aria-expanded="false" aria-controls="ctl-ext"><svg><use href="#i-monitor"/></svg><span><b>LG HDR QHD</b><small id="sum-ext">1600 × 900 HiDPI · 75Hz</small></span><svg class="chev"><use href="#i-chev"/></svg></button>
+                <button class="pm-dhead" aria-expanded="false" aria-controls="ctl-ext"><svg><use href="#i-monitor"/></svg><span><b>External Display</b><small id="sum-ext">1920 × 1080 HiDPI · 75Hz</small></span><span class="pm-tag" data-main="ext">Main</span><svg class="chev"><use href="#i-chev"/></svg></button>
                 <div class="pm-ctrls" id="ctl-ext" hidden>
                   <div class="pm-row">
                     <div class="pm-lab"><span>Contrast</span><span class="pm-val" id="o-con">70%</span></div>
-                    <div class="pm-sl"><svg><use href="#i-contrast"/></svg><input class="ms" type="range" id="con" min="0" max="100" value="70" aria-label="LG HDR QHD contrast"></div>
+                    <div class="pm-sl"><svg><use href="#i-contrast"/></svg><input class="ms" type="range" id="con" min="0" max="100" value="70" aria-label="External Display contrast"></div>
                   </div>
                   <div class="pm-row">
-                    <div class="pm-lab"><span>Volume</span><span class="pm-val" id="o-vol">25%</span></div>
-                    <div class="pm-sl"><button type="button" id="mute" aria-label="Mute" aria-pressed="false"><svg><use href="#i-spk"/></svg></button><input class="ms" type="range" id="vol" min="0" max="100" value="25" aria-label="LG HDR QHD volume"></div>
+                    <div class="pm-lab"><span>Volume</span><span class="pm-val" id="o-vol">0%</span></div>
+                    <div class="pm-sl"><button type="button" id="mute" aria-label="Mute" aria-pressed="false"><svg><use href="#i-spk"/></svg></button><input class="ms" type="range" id="vol" min="0" max="100" value="0" aria-label="External Display volume"></div>
                   </div>
                   <div class="pm-kv"><svg><use href="#i-resize"/></svg><span class="k grow">Resolution</span>
-                    <select class="pill" id="res-ext" aria-label="LG HDR QHD resolution"></select></div>
+                    <select class="pill" id="res-ext" aria-label="External Display resolution"></select></div>
                   <div class="pm-kv"><svg><use href="#i-sparkle"/></svg><span>High Resolution (HiDPI)</span>
                     <label class="pm-switch"><input type="checkbox" id="hidpi" role="switch" checked aria-label="High Resolution (HiDPI)"><i></i></label>
                     <span class="grow"></span><button type="button" class="pm-ellipsis" id="hidpi-more" aria-label="More HiDPI options"><svg><use href="#i-ellipsis"/></svg></button></div>
                   <div class="pm-pills">
-                    <select class="pill" id="hz-ext" aria-label="LG HDR QHD refresh rate"><option selected>75Hz</option><option>60Hz</option><option>50Hz</option></select>
-                    <select class="pill" aria-label="LG HDR QHD rotation"><option>0°</option><option>90°</option><option>180°</option><option>270°</option></select>
-                    <select class="pill" aria-label="LG HDR QHD input"><option>USB-C</option><option>DisplayPort 1</option><option>HDMI 1</option><option>HDMI 2</option></select>
+                    <select class="pill" id="hz-ext" aria-label="External Display refresh rate"><option selected>75Hz</option><option>60Hz</option><option>50Hz</option></select>
+                    <select class="pill" aria-label="External Display rotation"><option>0°</option><option>90°</option><option>180°</option><option>270°</option></select>
+                    <select class="pill" aria-label="External Display input"><option>USB-C</option><option>DisplayPort 1</option><option>HDMI 1</option><option>HDMI 2</option></select>
                   </div>
                 </div>
               </div>
             </div>
 
             <div class="pm-group">
-              <p class="pm-label">Arrangement</p>
-              <div class="pm-panel pm-arr">
+              <button type="button" class="pm-arrhead" id="arr-toggle" aria-expanded="false" aria-controls="arr-body"><span>Arrangement</span><small id="arr-sum">External Display above MacBook</small><svg class="chev"><use href="#i-chev"/></svg></button>
+              <div class="pm-panel pm-arr" id="arr-body" hidden>
                 <div class="pm-stage" id="stage">
                   <button type="button" class="pm-box main" id="box-built" aria-label="Select MacBook">MacBook</button>
-                  <button type="button" class="pm-box sel" id="box-ext" aria-label="Select LG HDR QHD">LG HDR QHD</button>
+                  <button type="button" class="pm-box sel" id="box-ext" aria-label="Select External Display">External</button>
                 </div>
                 <div class="pm-arrbar" id="arrbar">
                   <span class="pm-place">
@@ -645,7 +663,7 @@ footer nav a:hover { color: var(--ink); }
             </div>
           </div>
         </div>
-        <p class="desk-caption">The real menu, with example values. Turn on Sync Brightness, open a display, or move the LG around the MacBook.</p>
+        <p class="desk-caption">The real menu, with example values. Turn on Sync Brightness, open a display, or move the external display around the MacBook.</p>
       </div>
     </div>
   </section>
@@ -667,7 +685,7 @@ footer nav a:hover { color: var(--ink); }
             <div class="bs-panel">
               <div class="bs-link" aria-hidden="true"><i></i><svg><use href="#i-link"/></svg><i></i></div>
               <label class="bs-row"><span><svg aria-hidden="true"><use href="#i-laptop"/></svg>Built-in Retina Display<output id="bs-oa">62%</output></span><input class="bs" type="range" id="bs-a" min="0" max="100" value="62"></label>
-              <label class="bs-row"><span><svg aria-hidden="true"><use href="#i-monitor"/></svg>LG HDR QHD<output id="bs-ob">62%</output></span><input class="bs" type="range" id="bs-b" min="0" max="100" value="62"></label>
+              <label class="bs-row"><span><svg aria-hidden="true"><use href="#i-monitor"/></svg>External Display<output id="bs-ob">62%</output></span><input class="bs" type="range" id="bs-b" min="0" max="100" value="62"></label>
               <p class="bs-hint">Drag either slider.</p>
             </div>
           </div>
@@ -701,7 +719,7 @@ footer nav a:hover { color: var(--ink); }
 
         <article class="card c-arrange">
           <div class="art" aria-hidden="true">
-            <div class="v-arr"><div class="mon">LG HDR QHD</div><div class="mac">MacBook</div></div>
+            <div class="v-arr"><div class="mon">External</div><div class="mac">MacBook</div></div>
           </div>
           <h3>Arrange in a click</h3>
           <p>Put a monitor left, right, above or below, and choose the main display.</p>
@@ -728,7 +746,7 @@ footer nav a:hover { color: var(--ink); }
             <div class="vt-keys"><kbd><svg><use href="#i-sunmin"/></svg>F1</kbd><kbd><svg><use href="#c-sun"/></svg>F2</kbd></div>
 <pre class="vt-code"><span class="pr">$</span> displaymonk brightness 60 -d external
 <span class="pr">$</span> displaymonk input hdmi1
-<span class="ok">✓</span> LG HDR QHD → HDMI 1</pre>
+<span class="ok">✓</span> External Display → HDMI 1</pre>
           </div>
         </article>
       </div>
@@ -975,16 +993,14 @@ const COMPARE = [
   // Brightness: with Sync on, either slider moves both, like the app. Turning Sync on keeps the
   // display you're on (the built-in one here) and matches the other to it.
   const dim = $("#dim"), sync = $("#sync"), bb = $("#b-built"), be = $("#b-ext");
-  const rows = $("#rows"), caption = $("#caption");
+  const rows = $("#rows");
   const paint = () => {
     $("#o-built").textContent = bb.value + "%";
     $("#o-ext").textContent = be.value + "%";
     fill(bb); fill(be);
     dim.style.opacity = ((1 - bb.value / 100) * 0.72).toFixed(3);
     rows.classList.toggle("linked", sync.checked);
-    caption.innerHTML = sync.checked
-      ? '<i class="dot sync"></i>Linked across 2 displays · move any slider'
-      : "Each display is adjusted on its own";
+    $("#synclink").hidden = !sync.checked;
   };
   const follow = (from, to) => { if (sync.checked) to.value = from.value; paint(); };
   bb.addEventListener("input", () => follow(bb, be));
@@ -1014,16 +1030,16 @@ const COMPARE = [
     $("#sum-built").textContent = `${$("#res-built").value} · ${$("#hz-built").value}`;
     $("#sum-ext").textContent = `${resExt.value} · ${$("#hz-ext").value}`;
   };
-  fillModes("1600 × 900 HiDPI");
-  hidpi.addEventListener("change", () => { fillModes(hidpi.checked ? "1600 × 900 HiDPI" : "2560 × 1440"); summaries(); });
+  fillModes("1920 × 1080 HiDPI");
+  hidpi.addEventListener("change", () => { fillModes(hidpi.checked ? "1920 × 1080 HiDPI" : "2560 × 1440"); summaries(); });
   ["#res-built", "#hz-built", "#res-ext", "#hz-ext"].forEach(id => $(id).addEventListener("change", summaries));
   summaries();
   $("#hidpi-more").addEventListener("click", () => toast("Make HiDPI Permanent… keeps these sizes even when Display Monk isn't running"));
 
-  // Arrangement: the displays to scale (points), like ArrangementView. The LG is placed relative
+  // Arrangement: the displays to scale (points), like ArrangementView. The external display is placed relative
   // to the MacBook; Set as Main moves the menu bar line.
   const size = { built: { w: 1512, h: 945 }, ext: { w: 1600, h: 900 } };
-  const arr = { side: "above", align: "center", selected: "ext", main: "built" };
+  const arr = { side: "above", align: "center", selected: "ext", main: "ext" };
   const stage = $("#stage"), boxes = { built: $("#box-built"), ext: $("#box-ext") };
   const placeExt = () => {
     const a = size.built, b = size.ext, { side, align } = arr;
@@ -1032,7 +1048,11 @@ const COMPARE = [
     return { x: along(a.w, b.w), y: side === "above" ? -b.h : a.h };
   };
   const icons = { start: ["i-al-start", "Align top"], center: ["i-al-center", "Align centre"], end: ["i-al-end", "Align bottom"] };
+  const sideText = { left: "left of", right: "right of", above: "above", below: "below" };
   const drawArrangement = () => {
+    $("#arr-sum").textContent = `External Display ${sideText[arr.side]} MacBook`;
+    $$("[data-main]").forEach(t => { t.hidden = t.dataset.main !== arr.main; });
+    if (!stage.clientWidth) return;
     const e = placeExt();
     const frames = { built: { x: 0, y: 0, ...size.built }, ext: { ...e, ...size.ext } };
     const minX = Math.min(0, e.x), minY = Math.min(0, e.y);
@@ -1070,7 +1090,13 @@ const COMPARE = [
   $("#set-main").addEventListener("click", () => {
     arr.main = arr.selected;
     drawArrangement();
-    toast(`The menu bar and Dock move to ${arr.main === "built" ? "the MacBook" : "the LG HDR QHD"}`);
+    toast(`The menu bar and Dock move to ${arr.main === "built" ? "the MacBook" : "the external display"}`);
+  });
+  $("#arr-toggle").addEventListener("click", e => {
+    const btn = e.currentTarget, open = btn.getAttribute("aria-expanded") !== "true";
+    btn.setAttribute("aria-expanded", open);
+    $("#arr-body").hidden = !open;
+    drawArrangement();
   });
   drawArrangement();
   addEventListener("resize", drawArrangement);
