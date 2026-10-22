@@ -267,6 +267,80 @@ struct SyncLink: View {
     }
 }
 
+struct BrightnessRow: View {
+    @ObservedObject var state: DisplayState
+    @ObservedObject var store: DisplayStore
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Image(systemName: state.display.isBuiltIn ? "laptopcomputer" : "display")
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18)
+                Text(state.display.name)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .help(state.display.name)
+                BrightnessMethodMenu(state: state)
+                Spacer(minLength: 6)
+                Text(percentText(state.brightness))
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
+            }
+            .font(.callout)
+            Slider(value: Binding(get: { state.brightness }, set: { store.setBrightness($0, for: state) }), in: 0 ... 1)
+                .controlSize(.small)
+                .accessibilityLabel("\(state.display.name) brightness")
+            if state.brightnessMethod == .software {
+                Text("Software dimming: darkens the image only")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+        }
+    }
+}
+
+/// The small badge naming how brightness is changed, with the choices behind it.
+struct BrightnessMethodMenu: View {
+    @ObservedObject var state: DisplayState
+
+    var body: some View {
+        Menu {
+            ForEach(state.supportedMethods, id: \.self) { method in
+                Toggle(label(for: method), isOn: Binding(
+                    get: { state.brightnessMethod == method },
+                    set: { if $0 { state.setBrightnessMethod(method) } }
+                ))
+            }
+            if state.brightnessMethod != .software {
+                Divider()
+                Toggle("Combined: Dim to Black Below Minimum", isOn: Binding(get: { state.combined }, set: state.setCombined))
+            }
+        } label: {
+            Text(label(for: state.brightnessMethod))
+        }
+        .menuStyle(.button)
+        .menuIndicator(.hidden)
+        .buttonStyle(.plain)
+        .fixedSize()
+        .font(.caption2.weight(.semibold))
+        .foregroundStyle(.secondary)
+        .padding(.horizontal, 6)
+        .padding(.vertical, 1)
+        .background(Capsule().fill(Color.primary.opacity(0.08)))
+        .help(state.isCombined ? "How brightness is changed: \(label(for: state.brightnessMethod)), then software dimming to black" : "How brightness is changed on this display")
+    }
+
+    private func label(for method: BrightnessMethod) -> String {
+        switch method {
+        case .native: "Native"
+        case .ddc: "DDC"
+        case .software: "Software"
+        }
+    }
+}
+
+/// The link drawn beside synced sliders.
 // MARK: - Display rows
 
 /// A display's name and current mode; opens to the display's other settings.
