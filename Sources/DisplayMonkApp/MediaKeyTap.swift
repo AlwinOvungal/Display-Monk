@@ -3,9 +3,9 @@ import ApplicationServices
 import DisplayKit
 import DisplayMonkCore
 
-/// Intercepts the brightness and volume keys and applies them to the display under the mouse
-/// pointer. Keys for displays macOS already controls (Apple displays, normal audio devices) are
-/// passed through untouched.
+/// Intercepts the brightness and volume keys. Brightness applies to the display under the mouse
+/// pointer; volume to the monitor selected as the sound output. Keys macOS can handle itself
+/// (Apple displays, the MacBook's speakers, AirPods and other audio devices) pass through.
 final class MediaKeyTap {
     static let shared = MediaKeyTap()
 
@@ -91,10 +91,9 @@ final class MediaKeyTap {
     /// Returns true when the key was handled and must not reach the system.
     fileprivate func handle(_ key: MediaKey, isDown: Bool, fine: Bool) -> Bool {
         let store = DisplayStore.shared
-        guard let state = store.displayUnderMouse else { return false }
         switch key {
         case .brightnessUp, .brightnessDown:
-            guard Preferences.brightnessKeys else { return false }
+            guard Preferences.brightnessKeys, let state = store.displayUnderMouse else { return false }
             guard state.brightnessMethod != .native else {
                 // macOS changes native displays itself; synced displays follow once it has.
                 if isDown { store.followSystemBrightnessChange() }
@@ -107,14 +106,14 @@ final class MediaKeyTap {
             }
             return true
         case .volumeUp, .volumeDown:
-            guard Preferences.volumeKeys, let volume = state.volume else { return false }
+            guard Preferences.volumeKeys, let state = store.volumeTarget, let volume = state.volume else { return false }
             if isDown {
                 state.setVolume(LevelScale.step(volume, up: key == .volumeUp, fine: fine))
                 showOSD(.volume, detail: state.volumeDetail, level: state.volume ?? 0, on: state)
             }
             return true
         case .mute:
-            guard Preferences.volumeKeys, state.volume != nil else { return false }
+            guard Preferences.volumeKeys, let state = store.volumeTarget else { return false }
             if isDown {
                 state.setMuted(!state.muted)
                 showOSD(state.muted ? .muted : .volume, detail: state.volumeDetail, level: state.volume ?? 0, on: state)

@@ -110,6 +110,23 @@ final class DisplayStore: ObservableObject {
         return displays.first { $0.display.modeTarget == id } ?? displays.first { $0.display.isMain }
     }
 
+    /// The display whose speakers macOS is playing through, when macOS can't set their volume
+    /// itself. Nil for any other output (MacBook speakers, AirPods, USB), so the volume keys
+    /// reach macOS.
+    var volumeTarget: DisplayState? {
+        guard let output = AudioOutput.current(), output.isDisplayAudio, !output.hasSystemVolume else { return nil }
+        let candidates = displays.filter { $0.volume != nil }
+        // macOS names HDMI and DisplayPort audio after the monitor, e.g. "LG HDR QHD".
+        let outputName = output.name.lowercased()
+        if !outputName.isEmpty, let match = candidates.first(where: {
+            let name = $0.display.name.lowercased()
+            return !name.isEmpty && (outputName.contains(name) || name.contains(outputName))
+        }) {
+            return match
+        }
+        return candidates.count == 1 ? candidates[0] : nil
+    }
+
     // MARK: Brightness sync
 
     var canSync: Bool { displays.count > 1 }
@@ -757,13 +774,19 @@ enum Preferences {
     /// One-time clean-ups of settings written by earlier versions.
     static func migrate() {
         let defaults = UserDefaults.standard
-        guard defaults.integer(forKey: "settingsVersion") < 2 else { return }
-        // HiDPI sizes picked while testing earlier builds would override the 1600x900 default.
-        for key in defaults.dictionaryRepresentation().keys
-            where key.hasPrefix("display.") && (key.hasSuffix(".hiDPISize") || key.hasSuffix(".virtualHiDPI")) {
-            defaults.removeObject(forKey: key)
+        let version = defaults.integer(forKey: "settingsVersion")
+        guard version < 3 else { return }
+        if version < 2 {
+            // HiDPI sizes picked while testing earlier builds would override the 1600x900 default.
+            for key in defaults.dictionaryRepresentation().keys
+                where key.hasPrefix("display.") && (key.hasSuffix(".hiDPISize") || key.hasSuffix(".virtualHiDPI")) {
+                defaults.removeObject(forKey: key)
+            }
         }
-        defaults.set(2, forKey: "settingsVersion")
+        // Every section starts closed; from here on, sections stay as the user leaves them.
+        defaults.removeObject(forKey: "expandedDisplays")
+        defaults.removeObject(forKey: "arrangementExpanded")
+        defaults.set(3, forKey: "settingsVersion")
     }
 
     static func registerDefaults() {

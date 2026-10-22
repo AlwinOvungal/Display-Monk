@@ -199,8 +199,8 @@ struct MenuView: View {
 
 // MARK: - Brightness
 
-/// One slider per display, plus Sync Brightness. The rows look the same synced or not, so
-/// switching sync doesn't move anything; a saffron link joins the sliders while it's on.
+/// One slider per display, plus Sync Brightness. The rows line up with the sun icon; while sync
+/// is on, a saffron link between the sliders shows its status.
 struct BrightnessPanel: View {
     @ObservedObject var store: DisplayStore
 
@@ -221,47 +221,49 @@ struct BrightnessPanel: View {
                     .help("Keep all displays at the same brightness")
                 }
             }
-            VStack(spacing: 12) {
-                ForEach(store.displays) { state in
+            VStack(spacing: store.isSyncActive ? 6 : 12) {
+                ForEach(Array(store.displays.enumerated()), id: \.element.id) { index, state in
+                    if index > 0, store.isSyncActive {
+                        SyncLink(store: store)
+                            .transition(.opacity)
+                    }
                     BrightnessRow(state: state, store: store)
                 }
             }
-            .padding(.leading, store.canSync ? 20 : 0)
-            .overlay(alignment: .leading) {
-                if store.canSync {
-                    LinkBracket(isActive: store.isSyncActive)
-                }
-            }
-            if store.canSync || store.sync.isEnabled {
-                caption
+            if store.sync.isEnabled, !store.canSync {
+                Text("Sync is on. Connect another display to use it.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
         }
         .monkPanel()
     }
+}
 
-    private var caption: some View {
+/// Sits between the sliders while Sync Brightness is on: linked, or not matched with a way to
+/// match them.
+struct SyncLink: View {
+    @ObservedObject var store: DisplayStore
+
+    var body: some View {
+        let matched = store.isSyncMatched
+        let color = matched ? Color.monkSaffron : Color.orange
         HStack(spacing: 6) {
-            if store.isSyncActive {
-                if store.isSyncMatched {
-                    StatusDot(color: .monkSaffron)
-                    Text("Linked across \(store.displays.count) displays · move any slider")
-                } else {
-                    StatusDot(color: .orange)
-                    Text("Not matched")
-                    Spacer()
-                    Button("Match") { store.matchAll() }
-                        .buttonStyle(.link)
-                        .help("Set every display to the brightness of the one under the pointer")
-                }
-            } else if store.canSync {
-                Text("Each display is adjusted on its own")
+            Capsule().fill(color.opacity(0.35)).frame(height: 1)
+            Image(systemName: "link").font(.system(size: 9, weight: .bold))
+            if matched {
+                Text("Synced")
             } else {
-                Text("Sync is on. Connect another display to use it.")
+                Text("Not matched")
+                Button("Match") { store.matchAll() }
+                    .buttonStyle(.link)
+                    .help("Set every display to the brightness of the one under the pointer")
             }
+            Capsule().fill(color.opacity(0.35)).frame(height: 1)
         }
-        .font(.caption)
-        .foregroundStyle(.secondary)
-        .frame(minHeight: 16)
+        .font(.caption.weight(.medium))
+        .foregroundStyle(color)
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -339,24 +341,6 @@ struct BrightnessMethodMenu: View {
 }
 
 /// The link drawn beside synced sliders.
-struct LinkBracket: View {
-    let isActive: Bool
-
-    var body: some View {
-        VStack(spacing: 3) {
-            Capsule().frame(width: 2)
-            Image(systemName: "link").font(.system(size: 9, weight: .bold))
-            Capsule().frame(width: 2)
-        }
-        .foregroundStyle(Color.monkSaffron)
-        .frame(width: 12)
-        .padding(.vertical, 6)
-        .opacity(isActive ? 1 : 0)
-        .animation(.easeInOut(duration: 0.15), value: isActive)
-        .accessibilityHidden(true)
-    }
-}
-
 // MARK: - Display rows
 
 /// A display's name and current mode; opens to the display's other settings.
