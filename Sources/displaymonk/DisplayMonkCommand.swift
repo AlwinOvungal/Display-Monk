@@ -12,7 +12,7 @@ struct DisplayMonkCommand: ParsableCommand {
         Displays are chosen with -d: a list index, "main", "builtin", "external", "id:<n>" \
         or part of the name. Levels are percentages and may be relative: 50, +10, -10.
         """,
-        version: "0.1.4",
+        version: "0.1.5",
         subcommands: [
             List.self, Brightness.self, Contrast.self, Volume.self, Mute.self, Input.self,
             GetVCP.self, SetVCP.self, Modes.self, SetMode.self, Rotate.self, HiDPI.self, Reset.self,
