@@ -7,7 +7,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-VERSION="${VERSION:-0.2.0}"
+VERSION="${VERSION:-0.1.3}"
 ARCH_FLAGS=(--arch arm64 --arch x86_64)
 
 swift build -c release "${ARCH_FLAGS[@]}"
