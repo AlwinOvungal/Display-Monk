@@ -8,9 +8,11 @@ import SwiftUI
 /// Brightness), each display's other settings behind a disclosure row, and a quiet footer.
 struct MenuView: View {
     @ObservedObject var store: DisplayStore
+    @ObservedObject private var updater = Updater.shared
     @AppStorage(Preferences.brightnessKeysKey) private var brightnessKeys = false
     @AppStorage(Preferences.volumeKeysKey) private var volumeKeys = false
     @AppStorage(Preferences.showOSDKey) private var showOSD = true
+    @AppStorage(Preferences.autoUpdateCheckKey) private var autoUpdateCheck = true
     /// `Display.persistentKey`s of the display rows that are open, comma-separated.
     @AppStorage("expandedDisplays") private var expandedDisplays = ""
     @State private var launchAtLogin = LoginItem.isEnabled
@@ -30,6 +32,10 @@ struct MenuView: View {
             }
             if brightnessKeys || volumeKeys, !accessibilityTrusted {
                 accessibilityWarning
+            }
+            if updater.status != .idle {
+                UpdateBanner(updater: updater)
+                    .transition(.opacity)
             }
             Divider()
             footer
@@ -71,6 +77,9 @@ struct MenuView: View {
                 HStack(spacing: 5) {
                     StatusDot(color: store.displays.isEmpty ? .secondary : .green)
                     Text(statusText).font(.caption).foregroundStyle(.secondary)
+                    if case .available = updater.status {
+                        Text("· Update available").font(.caption).foregroundStyle(Color.monkSaffron)
+                    }
                 }
             }
             Spacer()
@@ -143,6 +152,14 @@ struct MenuView: View {
                     get: { launchAtLogin },
                     set: { launchAtLogin = LoginItem.setEnabled($0) }
                 ))
+                Divider()
+                Button("Check for Updates…") { updater.check(manual: true) }
+                    .disabled(updater.isBusy)
+                Toggle("Check for updates automatically", isOn: Binding(
+                    get: { autoUpdateCheck },
+                    set: { autoUpdateCheck = $0; updater.scheduleChecks() }
+                ))
+                Text("Version \(updater.currentVersion)")
             } label: {
                 Image(systemName: "gearshape")
             }
@@ -651,4 +668,68 @@ struct VisualEffectBackground: NSViewRepresentable {
     }
 
     func updateNSView(_: NSVisualEffectView, context _: Context) {}
+}
+
+// MARK: - Updates
+
+/// Shown above the footer while there's something to say about updates.
+struct UpdateBanner: View {
+    @ObservedObject var updater: Updater
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            switch updater.status {
+            case .idle:
+                EmptyView()
+            case .checking:
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Checking for updates…").foregroundStyle(.secondary)
+                }
+            case .upToDate:
+                Label("Display Monk \(updater.currentVersion) is up to date", systemImage: "checkmark.circle.fill")
+                    .foregroundStyle(.secondary)
+            case let .available(update):
+                HStack(spacing: 8) {
+                    Image(systemName: "arrow.down.circle.fill").foregroundStyle(Color.monkSaffron)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("Display Monk \(update.version.description) is available")
+                        Button("What's new") { updater.openReleasePage() }
+                            .buttonStyle(.link)
+                            .font(.caption)
+                    }
+                    Spacer(minLength: 6)
+                    Button("Install") { updater.install() }
+                        .controlSize(.small)
+                        .help("Downloads the update, then restarts Display Monk")
+                }
+            case let .downloading(progress):
+                Text("Downloading update…").foregroundStyle(.secondary)
+                ProgressView(value: progress).progressViewStyle(.linear)
+            case .installing:
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text("Installing and restarting…").foregroundStyle(.secondary)
+                }
+            case let .failed(message):
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(.orange)
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(message).fixedSize(horizontal: false, vertical: true)
+                        Button("Open release page") { updater.openReleasePage() }
+                            .buttonStyle(.link)
+                            .font(.caption)
+                    }
+                    Spacer(minLength: 6)
+                    Button { updater.dismiss() } label: { Image(systemName: "xmark") }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(.secondary)
+                        .help("Dismiss")
+                }
+            }
+        }
+        .font(.callout)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .monkPanel(padding: 10)
+    }
 }

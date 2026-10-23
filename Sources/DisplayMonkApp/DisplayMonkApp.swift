@@ -28,6 +28,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         DisplayManager.shared.observeChanges { DisplayStore.shared.reload() }
         MediaKeyTap.shared.update()
         observeSleep()
+        Updater.shared.scheduleChecks()
     }
 
     func applicationWillTerminate(_: Notification) {

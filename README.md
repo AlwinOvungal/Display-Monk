@@ -28,17 +28,34 @@ Website: <https://alwinovungal.github.io/Display-Monk/> (source in `site/`, publ
 
 ## Install
 
-Download `DisplayMonk.dmg` from the [latest release](https://github.com/AlwinOvungal/Display-Monk/releases/latest),
+The easiest way is one command in Terminal. It downloads the latest release, puts it in
+**Applications** and opens it, with no security prompt:
+
+```sh
+curl -fsSL https://alwinovungal.github.io/Display-Monk/install.sh | bash
+```
+
+Run it again any time to reinstall. The script is [`site/install.sh`](site/install.sh).
+
+Or download `DisplayMonk.dmg` from the [latest release](https://github.com/AlwinOvungal/Display-Monk/releases/latest),
 open it and drag **Display Monk** to **Applications**. The same release has `DisplayMonk.zip` if you
 prefer a zip.
 
-Builds aren't signed with an Apple Developer ID, so macOS blocks the first launch ("Apple could
-not verify…"). Click **Done**, then either:
+Builds aren't signed with an Apple Developer ID, so macOS blocks the first launch of a browser
+download ("Apple could not verify…"). Click **Done**, then either:
 
 - open **System Settings → Privacy & Security**, scroll to **Security** and click **Open Anyway**, or
 - run `xattr -dr com.apple.quarantine "/Applications/Display Monk.app"` in Terminal.
 
 The app lives in the menu bar (sun icon); it has no Dock icon or window.
+
+### Updates
+
+Display Monk checks GitHub for a new release about once a day (an anonymous request; nothing
+about you or your displays is sent). When there is one, the menu shows **Install**: the app
+downloads it, checks its checksum and signature, replaces itself and relaunches, with no security
+prompt. **Check for Updates…** and the automatic check are in the gear menu. After an update,
+re-add Display Monk under Accessibility if you use the key options (see Permissions).
 
 The `displaymonk` command-line tool is attached to the same release. Put it somewhere on your `PATH`,
 for example `/usr/local/bin`.
