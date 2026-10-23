@@ -810,21 +810,26 @@ footer nav a:hover { color: var(--ink); }
           <h2>Get Display Monk for your Mac.</h2>
           <p>One small app for Apple silicon and Intel Macs. It sits in your menu bar, has no Dock icon, and stays out of the way.</p>
           <p class="ver">Version <b data-cfg="version"></b> · <b data-cfg="size"></b> · released <b data-cfg="date"></b></p>
+          <p style="font-size:.9rem;margin-top:.2rem"><b>Install with one command</b>, with no security prompt. Paste it into Terminal:</p>
+          <div class="brew">
+            <code>curl -fsSL https://alwinovungal.github.io/Display-Monk/install.sh | bash</code>
+            <button class="copy" type="button">Copy</button>
+          </div>
           <a class="btn btn-primary get-app" id="dl-main" href="#download"><svg><use href="#i-download"/></svg>Download DisplayMonk.dmg</a>
           <p class="alt-dl">Prefer a zip? <a id="dl-zip" href="#download">Download DisplayMonk.zip</a></p>
-          <p style="font-size:.9rem;margin-top:.4rem">Blocked on first launch? Clear it from Terminal instead:</p>
+          <p style="font-size:.9rem;margin-top:.4rem">Downloaded the dmg and macOS blocks it? Clear it from Terminal:</p>
           <div class="brew">
-            <code id="term-cmd">xattr -dr com.apple.quarantine "/Applications/Display Monk.app"</code>
-            <button class="copy" id="copy" type="button">Copy</button>
+            <code>xattr -dr com.apple.quarantine "/Applications/Display Monk.app"</code>
+            <button class="copy" type="button">Copy</button>
           </div>
         </div>
         <div class="dl-side">
           <div>
             <h3>Install in three steps</h3>
             <ol class="steps">
-              <li><span>Open <span class="mono">DisplayMonk.dmg</span> and drag Display Monk into Applications.</span></li>
-              <li><span>Open it. The app isn't signed with an Apple Developer ID yet, so macOS blocks the first launch. Click Done, then go to System Settings › Privacy &amp; Security and click Open Anyway. Display Monk appears in your menu bar.</span></li>
-              <li><span>Optional: turn on the brightness and volume key options to control the external display under your pointer. macOS asks for Accessibility access then.</span></li>
+              <li><span>Paste the install command into Terminal. It puts Display Monk in Applications and opens it, and it appears in your menu bar.</span></li>
+              <li><span>Or use <span class="mono">DisplayMonk.dmg</span>: drag Display Monk into Applications and open it. The app isn't signed with an Apple Developer ID yet, so macOS blocks that first launch. Click Done, then go to System Settings › Privacy &amp; Security and click Open Anyway. After that, the app updates itself.</span></li>
+              <li><span>Optional: turn on the brightness and volume key options. Brightness keys control the display under your pointer, volume keys the monitor you picked as sound output. macOS asks for Accessibility access then.</span></li>
             </ol>
           </div>
           <div>
@@ -866,7 +871,7 @@ footer nav a:hover { color: var(--ink); }
         </details>
         <details>
           <summary>Why does it ask for Accessibility access?</summary>
-          <p>Only if you turn on the brightness or volume key options. macOS needs it so Display Monk can catch those keys and send them to the display under your pointer. After updating the app, remove Display Monk from the Accessibility list with – and add it again with +, because macOS stops trusting the new copy.</p>
+          <p>Only if you turn on the brightness or volume key options. macOS needs it so Display Monk can catch those keys and send them to the right display. After updating the app, remove Display Monk from the Accessibility list with – and add it again with +, because macOS stops trusting the new copy.</p>
         </details>
         <details>
           <summary>Are my changes permanent?</summary>
@@ -1135,10 +1140,12 @@ const COMPARE = [
   fmt(); setInterval(fmt, 30000);
 
   // Copy the Terminal command
-  $("#copy").addEventListener("click", async () => {
-    const text = $("#term-cmd").textContent;
-    try { await navigator.clipboard.writeText(text); toast("Copied to clipboard"); }
-    catch { const r = document.createRange(); r.selectNodeContents($("#term-cmd")); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selected. Press ⌘C to copy."); }
+  document.querySelectorAll(".brew").forEach(box => {
+    const code = box.querySelector("code");
+    box.querySelector(".copy").addEventListener("click", async () => {
+      try { await navigator.clipboard.writeText(code.textContent); toast("Copied to clipboard"); }
+      catch { const r = document.createRange(); r.selectNodeContents(code); const s = getSelection(); s.removeAllRanges(); s.addRange(r); toast("Selected. Press ⌘C to copy."); }
+    });
   });
 
   let tt;

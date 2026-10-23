@@ -770,6 +770,7 @@ enum Preferences {
     static let volumeKeysKey = "volumeKeysControlDisplaySpeakers"
     static let showOSDKey = "showOSD"
     static let syncBrightnessKey = "syncBrightness"
+    static let autoUpdateCheckKey = "checkForUpdatesAutomatically"
 
     /// One-time clean-ups of settings written by earlier versions.
     static func migrate() {
@@ -790,12 +791,13 @@ enum Preferences {
     }
 
     static func registerDefaults() {
-        UserDefaults.standard.register(defaults: [brightnessKeysKey: false, volumeKeysKey: false, showOSDKey: true, syncBrightnessKey: false])
+        UserDefaults.standard.register(defaults: [brightnessKeysKey: false, volumeKeysKey: false, showOSDKey: true, syncBrightnessKey: false, autoUpdateCheckKey: true])
     }
 
     static var brightnessKeys: Bool { UserDefaults.standard.bool(forKey: brightnessKeysKey) }
     static var volumeKeys: Bool { UserDefaults.standard.bool(forKey: volumeKeysKey) }
     static var showOSD: Bool { UserDefaults.standard.bool(forKey: showOSDKey) }
+    static var autoUpdateCheck: Bool { UserDefaults.standard.bool(forKey: autoUpdateCheckKey) }
 
     static var syncBrightness: Bool {
         get { UserDefaults.standard.bool(forKey: syncBrightnessKey) }

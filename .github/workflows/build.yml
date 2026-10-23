@@ -32,6 +32,13 @@ jobs:
         run: |
           build/displaymonk --version
           build/displaymonk list || true
+      - name: Install script (latest release)
+        run: |
+          bash -n site/install.sh
+          bash site/install.sh
+          test -d "/Applications/Display Monk.app"
+          ! xattr -p com.apple.quarantine "/Applications/Display Monk.app" 2>/dev/null
+          pkill -x DisplayMonk || true
       - uses: actions/upload-artifact@v4
         with:
           name: DisplayMonk
