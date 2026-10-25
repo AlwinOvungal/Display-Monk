@@ -143,7 +143,7 @@ public enum Privileged {
         }
     }
 
-    static func run(_ command: String) throws {
+    public static func run(_ command: String) throws {
         if geteuid() == 0 {
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -165,7 +165,7 @@ public enum Privileged {
         }
     }
 
-    static func quote(_ text: String) -> String {
+    public static func quote(_ text: String) -> String {
         "'" + text.replacingOccurrences(of: "'", with: "'\\''") + "'"
     }
 }
